@@ -824,7 +824,7 @@
   [data-theme="dark"] .sp-book-page-content-area .prose { color:#e8e0d0; }
   .sp-book-page-num { flex-shrink:0; height:2rem; display:flex; align-items:center; justify-content:center; font-size:.72rem; color:#9ca3af; letter-spacing:.05em; border-top:1px solid rgba(0,0,0,.06); background:inherit; }
   [data-theme="dark"] .sp-book-page-num { color:#6b7280; border-top-color:rgba(255,255,255,.05); }
-  #sp-book-nav-bar { flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:.5rem 1.25rem; background:#ede8df; border-top:1px solid rgba(0,0,0,.08); }
+  #sp-book-nav-bar { display:none !important; }
   [data-theme="dark"] #sp-book-nav-bar { background:#17120c; border-top-color:rgba(255,255,255,.05); }
   @media (max-width:640px) {
     #sp-book-spread { padding:.5rem; } #sp-book-spread::after { display:none; }
@@ -841,6 +841,8 @@
   #sp-info-bar.show { display:flex; }
   .sp-info-pill { display:flex; align-items:center; gap:3px; }
   #sp-tts-indicator { display:none; align-items:center; gap:4px; padding:1px 7px; background:var(--accent-subtle); border:1px solid var(--accent); border-radius:20px; font-size:10px; color:var(--accent-light); }
+  .sp-tts-reading { background:rgba(99,102,241,.2); outline:2px solid var(--accent); border-radius:3px; }
+  [data-note="true"]::after { content:"📝"; font-size:9px; vertical-align:super; margin-left:1px; }
   #sp-tts-indicator.show { display:flex; }
   .sp-tts-wave span { display:inline-block; width:3px; height:9px; background:var(--accent-light); border-radius:99px; margin:0 1px; animation:spTtsWave .8s ease-in-out infinite; }
   .sp-tts-wave span:nth-child(2){animation-delay:.15s} .sp-tts-wave span:nth-child(3){animation-delay:.3s}
@@ -851,8 +853,10 @@
   #sp-font-slider::-webkit-slider-runnable-track,#sp-lh-slider::-webkit-slider-runnable-track { background:var(--bg4); border-radius:99px; height:4px; }
   #sp-font-slider::-webkit-slider-thumb,#sp-lh-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; margin-top:-4.5px; }
 
-  /* ── Mini TOC ── */
-  #sp-mini-toc { position:absolute; right:0; top:0; bottom:0; width:185px; background:var(--bg2); border-left:1px solid var(--border); overflow-y:auto; padding:8px 4px; z-index:5; display:none; flex-direction:column; }
+  /* ── Mini TOC (fixed, glass) ── */
+  #sp-mini-toc { position:fixed; right:0; top:48px; bottom:0; width:190px; background:var(--bg2); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-left:1px solid var(--border2); overflow-y:auto; padding:8px 4px; z-index:50; display:none; flex-direction:column; box-shadow:-4px 0 18px rgba(0,0,0,0.18); }
+  [data-theme="dark"] #sp-mini-toc { background:rgba(19,21,28,0.88); }
+  [data-theme="light"] #sp-mini-toc { background:rgba(255,255,255,0.88); }
   #sp-mini-toc.show { display:flex; }
   .sp-toc-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--text3); padding:2px 8px 8px; }
   .sp-toc-btn { display:block; width:100%; text-align:left; padding:4px 8px; font-size:12px; color:var(--text3); border-radius:6px; cursor:pointer; background:transparent; border:none; font-family:'Hind Siliguri',sans-serif; line-height:1.4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:all .15s; }
@@ -1583,7 +1587,7 @@
         <!-- Tab: ডিজিটাল পাঠ ══════════════ -->
         <div id="tab-content-text" class="reader-tab active-tab" style="position:relative;display:flex;flex-direction:column;height:100%;overflow:hidden">
 
-          <!-- ── Info bar (word count / read time / TTS status) ── -->
+          <!-- ── Info bar ── -->
           <div id="sp-info-bar">
             <div class="sp-info-pill">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -1593,9 +1597,22 @@
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
               <span id="sp-word-count">— শব্দ</span>
             </div>
-            <div id="sp-tts-indicator">
+            <!-- TTS controls (shown when TTS active) -->
+            <div id="sp-tts-indicator" style="gap:6px">
+              <button onclick="spTtsPrev()" style="background:none;border:none;color:var(--accent-light);cursor:pointer;padding:0;display:flex;align-items:center" data-tip="আগের বাক্য">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
               <div class="sp-tts-wave"><span></span><span></span><span></span></div>
-              পড়া হচ্ছে
+              <button onclick="spTtsNext()" style="background:none;border:none;color:var(--accent-light);cursor:pointer;padding:0;display:flex;align-items:center" data-tip="পরের বাক্য">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+              <select id="sp-tts-rate" onchange="spTtsChangeRate(this.value)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--accent-light);border-radius:5px;font-size:10px;padding:1px 4px;cursor:pointer;font-family:'Hind Siliguri',sans-serif">
+                <option value="0.6">ধীর</option>
+                <option value="0.85">মাঝারি</option>
+                <option value="0.92" selected>স্বাভাবিক</option>
+                <option value="1.2">দ্রুত</option>
+                <option value="1.5">খুব দ্রুত</option>
+              </select>
               <button onclick="spStopTTS()" style="background:none;border:none;color:var(--accent-light);cursor:pointer;font-size:10px;padding:0;font-family:'Hind Siliguri',sans-serif">■ থামাও</button>
             </div>
           </div>
@@ -1710,14 +1727,11 @@
                 </div>
               </div>
               <div id="sp-book-measure-probe" style="position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;z-index:-1;overflow:visible;"></div>
-              <div id="sp-book-nav-bar">
-                <button onclick="spBookChangePage(-1)" id="sp-btn-prev" class="btn btn-ghost" style="font-size:12px;gap:4px">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> আগের পাতা
-                </button>
+              <!-- Book nav hidden — use scroll/swipe to change pages -->
+              <div id="sp-book-nav-bar" style="display:none">
+                <button onclick="spBookChangePage(-1)" id="sp-btn-prev" class="btn btn-ghost" style="font-size:12px;gap:4px">আগের পাতা</button>
                 <span id="sp-book-progress" style="font-size:11px;color:var(--text3)"></span>
-                <button onclick="spBookChangePage(1)" id="sp-btn-next" class="btn btn-ghost" style="font-size:12px;gap:4px">
-                  পরের পাতা <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-                </button>
+                <button onclick="spBookChangePage(1)" id="sp-btn-next" class="btn btn-ghost" style="font-size:12px;gap:4px">পরের পাতা</button>
               </div>
             </div>
 
@@ -3617,17 +3631,17 @@ async function tryLoadFromDataFolder() {
 // ── marked.js setup ───────────────────────
 (function() {
   if (typeof marked === 'undefined') return;
-  const renderer = new marked.Renderer();
-  renderer.image = (href, title, text) =>
+  const r = new marked.Renderer();
+  r.image = (href, title, text) =>
     `<img src="${href}" alt="${text||''}" title="${title||''}" class="max-w-full h-auto rounded-lg shadow-md my-4 mx-auto block" onerror="this.style.display='none'">`;
-  renderer.link = (href, title, text) =>
+  r.link = (href, title, text) =>
     `<a href="${href}" title="${title||''}" target="_blank" rel="noopener">${text}</a>`;
-  renderer.table = (header, body) =>
+  r.table = (header, body) =>
     `<div class="overflow-x-auto my-4"><table class="min-w-full border-collapse"><thead>${header}</thead><tbody>${body}</tbody></table></div>`;
-  marked.setOptions({ renderer, gfm: true, breaks: true });
+  marked.setOptions({ renderer: r, gfm: true, breaks: true });
 })();
 
-// ── Dark class sync (prose needs .dark) ───
+// ── Dark class sync ────────────────────────
 (function() {
   function sync() {
     document.documentElement.classList.toggle('dark',
@@ -3648,10 +3662,21 @@ let _spProbeFontSize    = '';
 let _spProbeLH          = '';
 let spImgLayout         = 'float';
 let spSplitModeActive   = localStorage.getItem('sp_splitMode') === 'true';
-let spTtsActive         = false;
-let spTtsUtterance      = null;
 let spMiniTocVisible    = false;
 let _spCurrentSel       = null;
+
+// Stores fetched text keyed by chapterId (cache for session)
+let _spFetchCache = {};
+
+// TTS state
+let _spTtsActive        = false;
+let _spTtsSentences     = [];   // plain text sentences array
+let _spTtsCurIdx        = 0;    // current sentence index
+let _spTtsHighlightEl   = null; // currently highlighted element
+
+// Rendered HTML cache (for focus mode, TTS plain text)
+let _spRenderedHTML   = '';   // last rendered HTML
+let _spRenderedMdText = '';   // last raw markdown/plain text
 
 // ── Render entry ──────────────────────────
 function spRenderTextTab() {
@@ -3673,90 +3698,94 @@ function spRenderTextTab() {
     if (wrapper) wrapper.classList.remove('active');
     spBookModeActive = false; spBookPages = [];
     if (viewer) viewer.innerHTML = '';
-    spStopTTS();
+    _spTtsStop(); _spRenderedHTML = ''; _spRenderedMdText = '';
     return;
   }
 
   if (noChEl) noChEl.style.display = 'none';
-
   const node = findNode(currentSubject.chapters, activeChapterId);
   if (!node) return;
   if (!node.content) node.content = { text:'', textUrl:'', pdfs:[], videos:[], qna:[] };
 
   if (toolbar) toolbar.style.display = 'flex';
-
-  // Reset
   spBookModeActive = false; spBookPages = [];
   if (wrapper) wrapper.classList.remove('active');
   if (viewer) viewer.innerHTML = '';
-  spStopTTS();
+  _spTtsStop();
   spSplitModeActive = localStorage.getItem('sp_splitMode') === 'true';
   _spUpdateSplitBadge();
 
-  if (node.content.textUrl && !node.content.text.trim()) {
-    if (loader) loader.style.display = 'flex';
-    if (scrollV) scrollV.style.display = spSplitModeActive ? 'none' : '';
-    if (emptyEl) emptyEl.style.display = 'none';
-    if (infoBar) infoBar.classList.remove('show');
-    spFetchText(node.content.textUrl)
-      .then(text => {
-        if (viewer) viewer.innerHTML = _spParse(text);
-        if (loader) loader.style.display = 'none';
-        if (spSplitModeActive) _spActivateBook();
-        else if (scrollV) scrollV.style.display = '';
-        viewer && viewer.classList.add('sp-fadein');
-        _spAfterRender(text, viewer, node.id);
-      })
-      .catch(err => {
-        if (loader) loader.style.display = 'none';
-        if (scrollV) scrollV.style.display = '';
-        if (viewer) viewer.innerHTML =
-          `<div style="color:#f87171;padding:2rem;text-align:center">❌ লোড ব্যর্থ: ${err.message}</div>`;
-      });
-  } else if (node.content.text && node.content.text.trim()) {
-    if (scrollV) scrollV.style.display = spSplitModeActive ? 'none' : '';
-    if (emptyEl) emptyEl.style.display = 'none';
-    viewer.innerHTML = _spParse(node.content.text);
-    if (spSplitModeActive) _spActivateBook();
-    viewer.classList.add('sp-fadein');
-    _spAfterRender(node.content.text, viewer, node.id);
+  const chId = node.id;
+
+  // Decide source: inline text takes priority
+  if (node.content.text && node.content.text.trim()) {
+    _spRenderedMdText = node.content.text;
+    _spDoRender(node.content.text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, chId, false);
+  } else if (node.content.textUrl) {
+    // Check cache first
+    if (_spFetchCache[chId]) {
+      const cached = _spFetchCache[chId];
+      _spRenderedMdText = cached;
+      _spDoRender(cached, viewer, scrollV, wrapper, infoBar, emptyEl, loader, chId, false);
+    } else {
+      if (loader) loader.style.display = 'flex';
+      if (scrollV) scrollV.style.display = spSplitModeActive ? 'none' : '';
+      if (emptyEl) emptyEl.style.display = 'none';
+      if (infoBar) infoBar.classList.remove('show');
+      spFetchText(node.content.textUrl)
+        .then(text => {
+          // Cache it
+          _spFetchCache[chId] = text;
+          // Also save to node.content.text so editor/TTS/focus work
+          node.content.text = text;
+          // Don't call saveData() to avoid bloating localStorage with remote content
+          _spRenderedMdText = text;
+          if (loader) loader.style.display = 'none';
+          _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, chId, true);
+        })
+        .catch(err => {
+          if (loader) loader.style.display = 'none';
+          if (scrollV) scrollV.style.display = '';
+          if (viewer) viewer.innerHTML =
+            `<div style="color:#f87171;padding:2rem;text-align:center;font-size:14px">❌ লোড ব্যর্থ: ${err.message}<br><small style="color:var(--text3)">Google Drive লিংকটি "Anyone with the link" মোডে আছে কিনা দেখুন</small></div>`;
+        });
+    }
   } else {
     if (scrollV) scrollV.style.display = '';
     if (emptyEl) emptyEl.style.display = 'flex';
     if (infoBar) infoBar.classList.remove('show');
+    _spRenderedMdText = ''; _spRenderedHTML = '';
     if (spSplitModeActive) _spShowBlankBook();
   }
 }
 
-// Called after successful render
-function _spAfterRender(rawText, viewer, chId) {
-  const infoBar = document.getElementById('sp-info-bar');
-  // Word count & read time
-  const words = rawText.replace(/[#*`>\[\]!]/g,'').trim().split(/\s+/).filter(Boolean).length;
+function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, chId, fadein) {
+  const html = _spParse(text);
+  _spRenderedHTML = html;
+  if (viewer) {
+    viewer.innerHTML = html;
+    if (fadein) viewer.classList.add('sp-fadein');
+    viewer.querySelectorAll('h1,h2,h3').forEach((h, i) => {
+      h.id = 'sp-heading-' + i;
+      h.style.scrollMarginTop = '70px';
+    });
+    _spReapplyHighlights(viewer, chId);
+    _spSetupSelection(viewer, chId);
+  }
+  if (scrollV) scrollV.style.display = spSplitModeActive ? 'none' : '';
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (infoBar) infoBar.classList.add('show');
+  const words = text.replace(/[#*`>\[\]!]/g,'').trim().split(/\s+/).filter(Boolean).length;
   const mins  = Math.max(1, Math.ceil(words / 150));
   const wEl = document.getElementById('sp-word-count');
   const tEl = document.getElementById('sp-read-time');
   if (wEl) wEl.textContent = words + ' শব্দ';
   if (tEl) tEl.textContent = mins + ' মিনিট';
-  if (infoBar) infoBar.classList.add('show');
-
-  // Add heading anchor IDs
-  if (viewer) {
-    viewer.querySelectorAll('h1,h2,h3').forEach((h, i) => {
-      h.id = 'sp-heading-' + i;
-      h.style.scrollMarginTop = '70px';
-    });
-    // Re-apply saved highlights
-    _spReapplyHighlights(viewer, chId);
-    // Setup highlight selection listener
-    _spSetupSelection(viewer, chId);
-  }
-
-  // Build mini TOC
+  if (spSplitModeActive) _spActivateBook();
   _spBuildMiniToc(viewer);
 }
 
-// ── Parse markdown ────────────────────────
+// ── Markdown parse ─────────────────────────
 function _spParse(md) {
   if (typeof marked !== 'undefined') {
     try { return marked.parse(md); } catch(e) {}
@@ -3764,54 +3793,65 @@ function _spParse(md) {
   return md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
 
-// ── Fetch with CORS proxy chain ───────────
+// ── Strip markdown to plain text ───────────
+function _spToPlain(md) {
+  return md
+    .replace(/#{1,6}\s+/g, '')         // headings
+    .replace(/\*\*(.+?)\*\*/g, '$1')   // bold
+    .replace(/\*(.+?)\*/g, '$1')       // italic
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1')// links
+    .replace(/`(.+?)`/g, '$1')         // inline code
+    .replace(/```[\s\S]*?```/g, '')     // code blocks
+    .replace(/^[-*+]\s+/gm, '')        // list items
+    .replace(/^\d+\.\s+/gm, '')        // numbered lists
+    .replace(/^>\s+/gm, '')            // blockquotes
+    .replace(/^---+$/gm, '।')          // hr
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+}
+
+// ── CORS fetch chain ───────────────────────
 async function spFetchText(url) {
   if (!url || !url.startsWith('http')) throw new Error('ভুল URL');
 
-  // Google Drive URL → direct download URL
+  // Google Drive → direct download
   let target = url;
   if (url.includes('drive.google.com')) {
-    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) ||
-              url.match(/id=([a-zA-Z0-9_-]+)/);
-    if (m && m[1]) {
-      target = `https://drive.google.com/uc?export=download&id=${m[1]}`;
-    }
+    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+    if (m && m[1]) target = `https://drive.google.com/uc?export=download&id=${m[1]}`;
   }
 
-  // Try direct first (works for raw GitHub, etc.)
+  // Direct (works for raw GitHub, plain servers)
   try {
     const r = await fetch(target, { mode: 'cors' });
     if (r.ok) {
       const t = await r.text();
-      if (t && !t.includes('<!DOCTYPE')) return t;
+      if (t && t.length > 10 && !t.trimStart().startsWith('<!')) return t;
     }
   } catch(e) {}
 
-  // CORS proxy chain
+  // Proxy chain
   const proxies = [
     u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
     u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
     u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
   ];
-
-  for (const makeUrl of proxies) {
+  for (const p of proxies) {
     try {
-      const r = await fetch(makeUrl(target));
+      const r = await fetch(p(target));
       if (r.ok) {
         const t = await r.text();
-        if (t && !t.includes('<!DOCTYPE') && t.length > 10) return t;
+        if (t && t.length > 10 && !t.trimStart().startsWith('<!')) return t;
       }
     } catch(e) {}
   }
-
-  throw new Error('কন্টেন্ট লোড সম্ভব হয়নি (CORS সমস্যা)');
+  throw new Error('কন্টেন্ট লোড সম্ভব হয়নি (সব proxy ব্যর্থ)');
 }
 
-// ── Font size ─────────────────────────────
+// ── Font size & line height ─────────────────
 function spApplyFontSize(pct) {
   pct = parseInt(pct);
-  const sz = (16 * pct / 100).toFixed(2) + 'px';
-  document.documentElement.style.setProperty('--reader-font-size', sz);
+  document.documentElement.style.setProperty('--reader-font-size', (16*pct/100).toFixed(2)+'px');
   const lbl = document.getElementById('sp-font-label');
   const sl  = document.getElementById('sp-font-slider');
   if (lbl) lbl.textContent = pct + '%';
@@ -3819,22 +3859,19 @@ function spApplyFontSize(pct) {
   localStorage.setItem('sp_fontSize', pct);
   if (spBookModeActive) { clearTimeout(window._spRepTimer); window._spRepTimer = setTimeout(_spRepaginate, 120); }
 }
-
-// ── Line height ───────────────────────────
 function spApplyLineHeight(val) {
-  const lh = (parseInt(val) / 10).toFixed(1);
+  const lh = (parseInt(val)/10).toFixed(1);
   document.documentElement.style.setProperty('--reader-line-height', lh);
   localStorage.setItem('sp_lineHeight', val);
   if (spBookModeActive) { clearTimeout(window._spRepTimer); window._spRepTimer = setTimeout(_spRepaginate, 120); }
 }
 
-// ── Book mode engine ──────────────────────
+// ── Book mode engine ────────────────────────
 function _spSyncProbe() {
   const cs = getComputedStyle(document.documentElement);
   _spProbeFontSize = cs.getPropertyValue('--reader-font-size').trim()   || '1rem';
   _spProbeLH       = cs.getPropertyValue('--reader-line-height').trim() || '1.8';
 }
-
 function _spProbeH(html) {
   const probe = document.getElementById('sp-book-measure-probe');
   if (!probe) return 0;
@@ -3844,576 +3881,657 @@ function _spProbeH(html) {
   probe.innerHTML = '';
   return h;
 }
-
 function _spSplitBlock(block, pages, curHTML, curH, pageH) {
-  const tag     = (block.tagName || 'p').toLowerCase();
-  const m       = block.outerHTML.match(/^<[a-z0-9]+([^>]*)>/i);
-  const atr     = m ? m[1] : '';
-  const inner   = block.innerHTML;
-  const sentences = inner.match(/[^।。！？.!?\n]+[।।！？.!?\n]?/g) || [inner];
+  const tag  = (block.tagName||'p').toLowerCase();
+  const m    = block.outerHTML.match(/^<[a-z0-9]+([^>]*)>/i);
+  const atr  = m ? m[1] : '';
+  const sentences = block.innerHTML.match(/[^।。！？.!?\n]+[।。！？.!?\n]?/g) || [block.innerHTML];
   let part = '';
   for (const s of sentences) {
-    if (_spProbeH(curHTML + `<${tag}${atr}>${part + s}</${tag}>`) <= pageH) { part += s; continue; }
+    if (_spProbeH(curHTML+`<${tag}${atr}>${part+s}</${tag}>`) <= pageH) { part+=s; continue; }
     for (const w of s.split(/(\s+)/)) {
-      if (_spProbeH(curHTML + `<${tag}${atr}>${part + w}</${tag}>`) <= pageH) { part += w; continue; }
+      if (_spProbeH(curHTML+`<${tag}${atr}>${part+w}</${tag}>`) <= pageH) { part+=w; continue; }
       if (part.trim()) curHTML += `<${tag}${atr}>${part}</${tag}>`;
-      pages.push(curHTML); curHTML = ''; curH = 0; part = w;
+      pages.push(curHTML); curHTML=''; curH=0; part=w;
     }
   }
-  if (part.trim()) { curHTML += `<${tag}${atr}>${part}</${tag}>`; curH = _spProbeH(curHTML); }
-  return { curHTML, curH };
+  if (part.trim()) { curHTML+=`<${tag}${atr}>${part}</${tag}>`; curH=_spProbeH(curHTML); }
+  return {curHTML,curH};
 }
-
 function _spPaginate(html, pageH) {
-  const tmp = document.createElement('div'); tmp.innerHTML = html;
-  const blocks = Array.from(tmp.children);
-  const pages = []; let curHTML = '', curH = 0;
-  const SPLIT = new Set(['p','h1','h2','h3','h4','h5','h6','li','blockquote','dt','dd']);
-  const flush = () => { if (curHTML.trim()) pages.push(curHTML); curHTML = ''; curH = 0; };
-  for (const b of blocks) {
-    const outer = b.outerHTML;
-    const testH = _spProbeH(curHTML + outer);
-    if (testH <= pageH) { curHTML += outer; curH = testH; continue; }
-    const tag = (b.tagName || '').toLowerCase();
-    if (SPLIT.has(tag)) {
-      const sp = pageH - curH, ah = _spProbeH(outer);
-      if (sp < pageH * 0.12) {
-        flush();
-        if (ah <= pageH) { curHTML = outer; curH = ah; }
-        else { const r = _spSplitBlock(b, pages, '', 0, pageH); curHTML = r.curHTML; curH = r.curH; }
-      } else {
-        const r = _spSplitBlock(b, pages, curHTML, curH, pageH); curHTML = r.curHTML; curH = r.curH;
-      }
-    } else {
-      flush();
-      const ah = _spProbeH(outer); curHTML = outer; curH = ah;
-      if (ah > pageH) flush();
-    }
+  const tmp=document.createElement('div'); tmp.innerHTML=html;
+  const blocks=Array.from(tmp.children), pages=[]; let curHTML='',curH=0;
+  const SPLIT=new Set(['p','h1','h2','h3','h4','h5','h6','li','blockquote','dt','dd']);
+  const flush=()=>{ if(curHTML.trim())pages.push(curHTML); curHTML=''; curH=0; };
+  for(const b of blocks){
+    const outer=b.outerHTML, testH=_spProbeH(curHTML+outer);
+    if(testH<=pageH){curHTML+=outer;curH=testH;continue;}
+    const tag=(b.tagName||'').toLowerCase();
+    if(SPLIT.has(tag)){
+      const sp=pageH-curH,ah=_spProbeH(outer);
+      if(sp<pageH*0.12){flush();if(ah<=pageH){curHTML=outer;curH=ah;}else{const r=_spSplitBlock(b,pages,'',0,pageH);curHTML=r.curHTML;curH=r.curH;}}
+      else{const r=_spSplitBlock(b,pages,curHTML,curH,pageH);curHTML=r.curHTML;curH=r.curH;}
+    }else{flush();const ah=_spProbeH(outer);curHTML=outer;curH=ah;if(ah>pageH)flush();}
   }
   flush();
-  return pages.length ? pages : [''];
+  return pages.length?pages:[''];
 }
-
 function _spActivateBook() {
-  const viewer  = document.getElementById('sp-render-markdown');
-  const scrollV = document.getElementById('sp-reader-scroll-view');
-  const wrapper = document.getElementById('sp-book-mode-wrapper');
-  const rawHTML = viewer ? viewer.innerHTML : '';
-  if (!rawHTML.trim()) { if (scrollV) scrollV.style.display = ''; return; }
-  spBookModeActive = true;
-  _spBookRawHTML   = rawHTML;
-  if (scrollV) scrollV.style.display = 'none';
-  if (wrapper) wrapper.classList.add('active');
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    const ca = document.getElementById('sp-book-left-content-area');
-    if (!ca) return;
-    const cs  = window.getComputedStyle(ca);
-    const pH  = ca.clientHeight - (parseFloat(cs.paddingTop)||0) - (parseFloat(cs.paddingBottom)||0);
-    _spProbeWidth = ca.clientWidth - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0);
+  const viewer=document.getElementById('sp-render-markdown');
+  const scrollV=document.getElementById('sp-reader-scroll-view');
+  const wrapper=document.getElementById('sp-book-mode-wrapper');
+  const rawHTML=viewer?viewer.innerHTML:'';
+  if(!rawHTML.trim()){if(scrollV)scrollV.style.display='';return;}
+  spBookModeActive=true; _spBookRawHTML=rawHTML;
+  if(scrollV)scrollV.style.display='none';
+  if(wrapper)wrapper.classList.add('active');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const ca=document.getElementById('sp-book-left-content-area');
+    if(!ca)return;
+    const cs=window.getComputedStyle(ca);
+    const pH=ca.clientHeight-(parseFloat(cs.paddingTop)||0)-(parseFloat(cs.paddingBottom)||0);
+    _spProbeWidth=ca.clientWidth-(parseFloat(cs.paddingLeft)||0)-(parseFloat(cs.paddingRight)||0);
     _spSyncProbe();
-    spBookPages = []; spBookCurrentSpread = 0;
-    spBookPages = _spPaginate(rawHTML, pH);
+    spBookPages=[]; spBookCurrentSpread=0;
+    spBookPages=_spPaginate(rawHTML,pH);
     _spShowSpread();
   }));
 }
-
 function _spShowSpread() {
-  const total = spBookPages.length;
-  const li    = spBookCurrentSpread;
-  const ri    = li + 1;
-  const lEl   = document.getElementById('sp-book-left-content');
-  const rEl   = document.getElementById('sp-book-right-content');
-  const sty   = `font-size:${_spProbeFontSize};line-height:${_spProbeLH}`;
-  if (lEl) { lEl.setAttribute('style', sty); lEl.innerHTML = spBookPages[li] || ''; }
-  if (rEl) {
-    rEl.setAttribute('style', sty);
-    const mob = window.innerWidth <= 640;
-    rEl.innerHTML = (!mob && ri < total) ? spBookPages[ri] : '';
-  }
-  const mob = window.innerWidth <= 640;
-  const lNum  = document.getElementById('sp-book-left-num');
-  const rNum  = document.getElementById('sp-book-right-num');
-  const prog  = document.getElementById('sp-book-progress');
-  const prev  = document.getElementById('sp-btn-prev');
-  const next  = document.getElementById('sp-btn-next');
-  if (lNum)  lNum.textContent  = `— ${li + 1} / ${total} —`;
-  if (rNum)  rNum.textContent  = (!mob && ri < total) ? `— ${ri + 1} / ${total} —` : '';
-  if (prog)  prog.textContent  = `পাতা ${li + 1}${!mob && ri < total ? ' – ' + (ri + 1) : ''} / ${total}`;
-  if (prev)  prev.style.opacity = li <= 0 ? '0.4' : '1';
-  if (next)  next.style.opacity = (mob ? li >= total - 1 : li + 2 >= total) ? '0.4' : '1';
+  const total=spBookPages.length, li=spBookCurrentSpread, ri=li+1;
+  const lEl=document.getElementById('sp-book-left-content');
+  const rEl=document.getElementById('sp-book-right-content');
+  const sty=`font-size:${_spProbeFontSize};line-height:${_spProbeLH}`;
+  if(lEl){lEl.setAttribute('style',sty);lEl.innerHTML=spBookPages[li]||'';}
+  const mob=window.innerWidth<=640;
+  if(rEl){rEl.setAttribute('style',sty);rEl.innerHTML=(!mob&&ri<total)?spBookPages[ri]:'';}
+  const lNum=document.getElementById('sp-book-left-num');
+  const rNum=document.getElementById('sp-book-right-num');
+  if(lNum) lNum.textContent=`— ${li+1} / ${total} —`;
+  if(rNum) rNum.textContent=(!mob&&ri<total)?`— ${ri+1} / ${total} —`:'';
 }
-
 function _spShowBlankBook() {
-  const wrapper = document.getElementById('sp-book-mode-wrapper');
-  const lEl = document.getElementById('sp-book-left-content');
-  const rEl = document.getElementById('sp-book-right-content');
-  if (wrapper) wrapper.classList.add('active');
-  ['sp-book-left-num','sp-book-right-num','sp-book-progress'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.textContent = '';
+  const wrapper=document.getElementById('sp-book-mode-wrapper');
+  if(wrapper)wrapper.classList.add('active');
+  ['sp-book-left-content','sp-book-right-content'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.innerHTML='';el.removeAttribute('style');}
   });
-  if (lEl) { lEl.innerHTML = ''; lEl.removeAttribute('style'); }
-  if (rEl) { rEl.innerHTML = ''; rEl.removeAttribute('style'); }
+  ['sp-book-left-num','sp-book-right-num'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.textContent='';
+  });
 }
-
 function spBookChangePage(dir) {
-  const step = window.innerWidth <= 640 ? 1 : 2;
-  const next = spBookCurrentSpread + dir * step;
-  if (next < 0 || next >= spBookPages.length) return;
-  spBookCurrentSpread = next; _spShowSpread();
+  const step=window.innerWidth<=640?1:2;
+  const next=spBookCurrentSpread+dir*step;
+  if(next<0||next>=spBookPages.length)return;
+  spBookCurrentSpread=next;_spShowSpread();
 }
-
 function _spDeactivateBook() {
-  if (!spBookModeActive) return;
-  spBookModeActive = false; spBookPages = [];
-  const scrollV = document.getElementById('sp-reader-scroll-view');
-  const wrapper = document.getElementById('sp-book-mode-wrapper');
-  if (scrollV) scrollV.style.display = '';
-  if (wrapper) wrapper.classList.remove('active');
+  if(!spBookModeActive)return;
+  spBookModeActive=false;spBookPages=[];
+  const scrollV=document.getElementById('sp-reader-scroll-view');
+  const wrapper=document.getElementById('sp-book-mode-wrapper');
+  if(scrollV)scrollV.style.display='';
+  if(wrapper)wrapper.classList.remove('active');
 }
-
 function _spRepaginate() {
-  if (!spBookModeActive || !_spBookRawHTML) return;
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    const ca = document.getElementById('sp-book-left-content-area');
-    if (!ca) return;
-    const cs   = window.getComputedStyle(ca);
-    const pH   = ca.clientHeight - (parseFloat(cs.paddingTop)||0) - (parseFloat(cs.paddingBottom)||0);
-    _spProbeWidth = ca.clientWidth - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0);
+  if(!spBookModeActive||!_spBookRawHTML)return;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const ca=document.getElementById('sp-book-left-content-area');
+    if(!ca)return;
+    const cs=window.getComputedStyle(ca);
+    const pH=ca.clientHeight-(parseFloat(cs.paddingTop)||0)-(parseFloat(cs.paddingBottom)||0);
+    _spProbeWidth=ca.clientWidth-(parseFloat(cs.paddingLeft)||0)-(parseFloat(cs.paddingRight)||0);
     _spSyncProbe();
-    const prev = spBookCurrentSpread, prevT = spBookPages.length;
-    spBookPages = _spPaginate(_spBookRawHTML, pH);
-    const step = window.innerWidth <= 640 ? 1 : 2;
-    let nL = Math.floor((prevT > 0 ? prev / prevT : 0) * spBookPages.length);
-    if (step === 2 && nL % 2 !== 0) nL--;
-    spBookCurrentSpread = Math.max(0, Math.min(nL, spBookPages.length - 1));
+    const prev=spBookCurrentSpread,prevT=spBookPages.length;
+    spBookPages=_spPaginate(_spBookRawHTML,pH);
+    const step=window.innerWidth<=640?1:2;
+    let nL=Math.floor((prevT>0?prev/prevT:0)*spBookPages.length);
+    if(step===2&&nL%2!==0)nL--;
+    spBookCurrentSpread=Math.max(0,Math.min(nL,spBookPages.length-1));
     _spShowSpread();
   }));
 }
-
 function spToggleSplitMode() {
-  spSplitModeActive = !spSplitModeActive;
-  localStorage.setItem('sp_splitMode', String(spSplitModeActive));
+  spSplitModeActive=!spSplitModeActive;
+  localStorage.setItem('sp_splitMode',String(spSplitModeActive));
   _spUpdateSplitBadge();
-  if (spSplitModeActive) {
-    const viewer = document.getElementById('sp-render-markdown');
-    if (viewer && viewer.innerHTML.trim()) _spActivateBook();
-    else _spShowBlankBook();
-  } else {
-    _spDeactivateBook();
-  }
+  if(spSplitModeActive){
+    const viewer=document.getElementById('sp-render-markdown');
+    if(viewer&&viewer.innerHTML.trim())_spActivateBook(); else _spShowBlankBook();
+  }else _spDeactivateBook();
 }
-
 function _spUpdateSplitBadge() {
-  const badge = document.getElementById('sp-split-badge');
-  const btn   = document.getElementById('sp-split-btn');
-  if (!badge) return;
-  if (spSplitModeActive) {
-    badge.textContent = 'চালু';
-    badge.style.background = 'rgba(251,191,36,.2)';
-    badge.style.color = '#fbbf24';
-    if (btn) btn.classList.add('active');
-  } else {
-    badge.textContent = 'বন্ধ';
-    badge.style.background = 'var(--bg4)';
-    badge.style.color = 'var(--text3)';
-    if (btn) btn.classList.remove('active');
+  const badge=document.getElementById('sp-split-badge');
+  const btn=document.getElementById('sp-split-btn');
+  if(!badge)return;
+  if(spSplitModeActive){
+    badge.textContent='চালু';badge.style.background='rgba(251,191,36,.2)';badge.style.color='#fbbf24';
+    if(btn)btn.classList.add('active');
+  }else{
+    badge.textContent='বন্ধ';badge.style.background='var(--bg4)';badge.style.color='var(--text3)';
+    if(btn)btn.classList.remove('active');
   }
 }
-
-// Wheel + touch
-(function() {
-  let _lw = 0;
-  document.addEventListener('wheel', e => {
-    if (!spBookModeActive) return;
-    const w = document.getElementById('sp-book-mode-wrapper');
-    if (!w || !w.classList.contains('active') || !w.contains(e.target)) return;
+// Wheel + touch for book mode
+(function(){
+  let _lw=0;
+  document.addEventListener('wheel',e=>{
+    if(!spBookModeActive)return;
+    const w=document.getElementById('sp-book-mode-wrapper');
+    if(!w||!w.classList.contains('active')||!w.contains(e.target))return;
     e.preventDefault();
-    const now = Date.now(); if (now - _lw < 80) return; _lw = now;
-    spBookChangePage(e.deltaY > 0 ? 1 : -1);
-  }, { passive: false });
+    const now=Date.now();if(now-_lw<80)return;_lw=now;
+    spBookChangePage(e.deltaY>0?1:-1);
+  },{passive:false});
 })();
-(function() {
-  let sx = 0, sy = 0;
-  document.addEventListener('touchstart', e => {
-    if (!spBookModeActive) return;
-    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
-  }, { passive: true });
-  document.addEventListener('touchend', e => {
-    if (!spBookModeActive) return;
-    const w = document.getElementById('sp-book-mode-wrapper');
-    if (!w || !w.classList.contains('active')) return;
-    const dx = e.changedTouches[0].clientX - sx;
-    const dy = e.changedTouches[0].clientY - sy;
-    if (Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx)) return;
-    spBookChangePage(dx < 0 ? 1 : -1);
-  }, { passive: true });
+(function(){
+  let sx=0,sy=0;
+  document.addEventListener('touchstart',e=>{if(!spBookModeActive)return;sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!spBookModeActive)return;
+    const w=document.getElementById('sp-book-mode-wrapper');
+    if(!w||!w.classList.contains('active'))return;
+    const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)<40||Math.abs(dy)>Math.abs(dx))return;
+    spBookChangePage(dx<0?1:-1);
+  },{passive:true});
 })();
-window.addEventListener('resize', () => {
-  if (spBookModeActive) { clearTimeout(window._spRepTimer); window._spRepTimer = setTimeout(_spRepaginate, 200); }
+window.addEventListener('resize',()=>{
+  if(spBookModeActive){clearTimeout(window._spRepTimer);window._spRepTimer=setTimeout(_spRepaginate,200);}
 });
 
-// ── TTS ───────────────────────────────────
-function spToggleTTS() {
-  if (spTtsActive) spStopTTS();
-  else spStartTTS();
-}
-function spStartTTS() {
-  if (!('speechSynthesis' in window)) { showToast('এই ডিভাইসে TTS নেই'); return; }
-  const node = activeChapterId && currentSubject ? findNode(currentSubject.chapters, activeChapterId) : null;
-  if (!node || !node.content) { showToast('কনটেন্ট নেই'); return; }
-  const text = (node.content.text || '').replace(/#{1,6}\s/g,'').replace(/\*\*?(.*?)\*\*?/g,'$1')
-    .replace(/\[(.*?)\]\(.*?\)/g,'$1').replace(/`(.*?)`/g,'$1')
-    .replace(/^[-*]\s/gm,'').replace(/^>\s/gm,'').replace(/---/g,'।').trim();
-  if (!text) { showToast('পড়ার মতো টেক্সট নেই'); return; }
-  window.speechSynthesis.cancel();
-  spTtsUtterance = new SpeechSynthesisUtterance(text);
-  const voices = window.speechSynthesis.getVoices();
-  const bnVoice = voices.find(v => v.lang.startsWith('bn') || v.lang.startsWith('hi'));
-  if (bnVoice) spTtsUtterance.voice = bnVoice;
-  spTtsUtterance.rate = 0.92; spTtsUtterance.pitch = 1;
-  spTtsUtterance.onend   = spStopTTS;
-  spTtsUtterance.onerror = spStopTTS;
-  window.speechSynthesis.speak(spTtsUtterance);
-  spTtsActive = true;
-  const ind = document.getElementById('sp-tts-indicator');
-  const btn = document.getElementById('sp-tts-btn');
-  if (ind) ind.classList.add('show');
-  if (btn) btn.classList.add('active');
-}
-function spStopTTS() {
-  if (typeof speechSynthesis !== 'undefined') window.speechSynthesis.cancel();
-  spTtsActive = false; spTtsUtterance = null;
-  const ind = document.getElementById('sp-tts-indicator');
-  const btn = document.getElementById('sp-tts-btn');
-  if (ind) ind.classList.remove('show');
-  if (btn) btn.classList.remove('active');
+// ══════════════════════════════════════════
+// TTS — sentence-by-sentence with prev/next
+// ══════════════════════════════════════════
+function _spTtsStop() {
+  if(typeof speechSynthesis!=='undefined') window.speechSynthesis.cancel();
+  _spTtsActive=false;
+  _spTtsHighlightSentence(-1);
+  const ind=document.getElementById('sp-tts-indicator');
+  const btn=document.getElementById('sp-tts-btn');
+  if(ind)ind.classList.remove('show');
+  if(btn)btn.classList.remove('active');
 }
 
-// ── Mini TOC ──────────────────────────────
-function _spBuildMiniToc(viewer) {
-  const tocItems = document.getElementById('sp-mini-toc-items');
-  const tocEl    = document.getElementById('sp-mini-toc');
-  const btn      = document.getElementById('sp-toc-btn');
-  if (!tocItems || !viewer) return;
-  tocItems.innerHTML = '';
-  const headings = viewer.querySelectorAll('h1,h2,h3');
-  if (headings.length < 2) {
-    if (btn) { btn.style.opacity = '0.35'; btn.style.pointerEvents = 'none'; }
+function _spTtsSplitSentences(text) {
+  // Split by sentence-ending punctuation including Bengali ।
+  const raw = text.split(/(?<=[।.!?])\s+|(?<=।)/);
+  return raw.map(s=>s.trim()).filter(s=>s.length>1);
+}
+
+function _spTtsHighlightSentence(idx) {
+  // Remove previous highlight
+  if(_spTtsHighlightEl){
+    _spTtsHighlightEl.classList.remove('sp-tts-reading');
+    _spTtsHighlightEl=null;
+  }
+  if(idx<0)return;
+  const sentence=_spTtsSentences[idx];
+  if(!sentence)return;
+  // Find sentence in rendered DOM
+  const viewer=document.getElementById('sp-render-markdown');
+  if(!viewer)return;
+  const walker=document.createTreeWalker(viewer,NodeFilter.SHOW_TEXT,null);
+  let node;
+  while((node=walker.nextNode())){
+    if(node.nodeValue.includes(sentence.substring(0,20))){
+      const span=node.parentElement;
+      if(span){span.classList.add('sp-tts-reading');_spTtsHighlightEl=span;}
+      span&&span.scrollIntoView({behavior:'smooth',block:'nearest'});
+      break;
+    }
+  }
+}
+
+function _spTtsSpeakIdx(idx) {
+  if(idx<0||idx>=_spTtsSentences.length){_spTtsStop();return;}
+  window.speechSynthesis.cancel();
+  _spTtsCurIdx=idx;
+  _spTtsHighlightSentence(idx);
+  const utt=new SpeechSynthesisUtterance(_spTtsSentences[idx]);
+  const voices=window.speechSynthesis.getVoices();
+  const bnVoice=voices.find(v=>v.lang.startsWith('bn')||v.lang.startsWith('hi'));
+  if(bnVoice)utt.voice=bnVoice;
+  const rateEl=document.getElementById('sp-tts-rate');
+  utt.rate=rateEl?parseFloat(rateEl.value):0.92;
+  utt.pitch=1;
+  utt.onend=()=>{
+    if(_spTtsActive)_spTtsSpeakIdx(_spTtsCurIdx+1);
+  };
+  utt.onerror=()=>{
+    if(_spTtsActive)_spTtsSpeakIdx(_spTtsCurIdx+1);
+  };
+  window.speechSynthesis.speak(utt);
+}
+
+function spToggleTTS() {
+  if(_spTtsActive){
+    _spTtsStop();
     return;
   }
-  if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = ''; }
-  headings.forEach(h => {
-    const b = document.createElement('button');
-    b.className = 'sp-toc-btn' + (h.tagName === 'H3' ? ' h3' : '');
-    b.textContent = h.textContent.trim();
-    b.onclick = () => {
-      h.scrollIntoView({ behavior:'smooth', block:'start' });
-      tocItems.querySelectorAll('.sp-toc-btn').forEach(x => x.classList.remove('active'));
+  // Use _spRenderedMdText (available even for cloud-fetched content)
+  const raw=_spRenderedMdText;
+  if(!raw||!raw.trim()){showToast('পড়ার মতো কনটেন্ট নেই');return;}
+  const plain=_spToPlain(raw);
+  if(!plain){showToast('পড়ার মতো টেক্সট নেই');return;}
+  _spTtsSentences=_spTtsSplitSentences(plain);
+  if(!_spTtsSentences.length){showToast('কোনো বাক্য নেই');return;}
+  _spTtsActive=true;
+  const ind=document.getElementById('sp-tts-indicator');
+  const btn=document.getElementById('sp-tts-btn');
+  if(ind)ind.classList.add('show');
+  if(btn)btn.classList.add('active');
+  // If already was at some index (paused), resume from there
+  if(_spTtsCurIdx>=_spTtsSentences.length)_spTtsCurIdx=0;
+  _spTtsSpeakIdx(_spTtsCurIdx);
+}
+function spStopTTS(){_spTtsStop();}
+function spTtsNext(){if(_spTtsActive||_spTtsSentences.length)_spTtsSpeakIdx(_spTtsCurIdx+1);}
+function spTtsPrev(){if(_spTtsActive||_spTtsSentences.length)_spTtsSpeakIdx(Math.max(0,_spTtsCurIdx-1));}
+function spTtsChangeRate(val){
+  // If currently playing, restart current sentence with new rate
+  if(_spTtsActive){_spTtsSpeakIdx(_spTtsCurIdx);}
+}
+
+// ── Mini TOC ───────────────────────────────
+function _spBuildMiniToc(viewer) {
+  const tocItems=document.getElementById('sp-mini-toc-items');
+  const btn=document.getElementById('sp-toc-btn');
+  if(!tocItems||!viewer)return;
+  tocItems.innerHTML='';
+  const headings=viewer.querySelectorAll('h1,h2,h3');
+  if(headings.length<2){
+    if(btn){btn.style.opacity='0.35';btn.style.pointerEvents='none';}
+    return;
+  }
+  if(btn){btn.style.opacity='1';btn.style.pointerEvents='';}
+  headings.forEach(h=>{
+    const b=document.createElement('button');
+    b.className='sp-toc-btn'+(h.tagName==='H3'?' h3':'');
+    b.textContent=h.textContent.trim();
+    b.onclick=()=>{
+      h.scrollIntoView({behavior:'smooth',block:'start'});
+      tocItems.querySelectorAll('.sp-toc-btn').forEach(x=>x.classList.remove('active'));
       b.classList.add('active');
     };
     tocItems.appendChild(b);
   });
 }
 function spToggleMiniToc() {
-  spMiniTocVisible = !spMiniTocVisible;
-  const toc = document.getElementById('sp-mini-toc');
-  const btn = document.getElementById('sp-toc-btn');
-  if (toc) toc.classList.toggle('show', spMiniTocVisible);
-  if (btn) btn.classList.toggle('active', spMiniTocVisible);
+  spMiniTocVisible=!spMiniTocVisible;
+  const toc=document.getElementById('sp-mini-toc');
+  const btn=document.getElementById('sp-toc-btn');
+  if(toc)toc.classList.toggle('show',spMiniTocVisible);
+  if(btn)btn.classList.toggle('active',spMiniTocVisible);
 }
 
-// ── Focus mode ────────────────────────────
+// ── Focus mode ─────────────────────────────
 function spOpenFocus() {
-  const node = activeChapterId && currentSubject ? findNode(currentSubject.chapters, activeChapterId) : null;
-  if (!node || !node.content || !node.content.text) { showToast('কনটেন্ট নেই'); return; }
-  const overlay = document.getElementById('sp-focus-overlay');
-  const fc      = document.getElementById('sp-focus-content');
-  if (!overlay || !fc) return;
-  fc.innerHTML = _spParse(node.content.text);
-  // Apply current font/lh
-  const fs = parseInt(localStorage.getItem('sp_fontSize') || '100');
-  const lh = localStorage.getItem('sp_lineHeight');
-  fc.style.fontSize   = (16 * fs / 100).toFixed(2) + 'px';
-  fc.style.lineHeight = lh ? (parseInt(lh)/10).toFixed(1) : '1.8';
+  // Works for both inline and cloud-fetched (uses _spRenderedMdText)
+  if(!_spRenderedMdText||!_spRenderedMdText.trim()){showToast('কনটেন্ট নেই');return;}
+  const overlay=document.getElementById('sp-focus-overlay');
+  const fc=document.getElementById('sp-focus-content');
+  if(!overlay||!fc)return;
+  fc.innerHTML=_spParse(_spRenderedMdText);
+  const fs=parseInt(localStorage.getItem('sp_fontSize')||'100');
+  const lh=localStorage.getItem('sp_lineHeight');
+  fc.style.fontSize=(16*fs/100).toFixed(2)+'px';
+  fc.style.lineHeight=lh?(parseInt(lh)/10).toFixed(1):'1.8';
   overlay.classList.add('show');
 }
-function spCloseFocus() {
-  const overlay = document.getElementById('sp-focus-overlay');
-  if (overlay) overlay.classList.remove('show');
+function spCloseFocus(){
+  const overlay=document.getElementById('sp-focus-overlay');
+  if(overlay)overlay.classList.remove('show');
 }
 
-// ── Highlight system ──────────────────────
+// ══════════════════════════════════════════
+// HIGHLIGHT — with note support
+// ══════════════════════════════════════════
 function _spSetupSelection(container, chId) {
-  if (!container) return;
-  const handler = () => {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.toString().trim()) { _spHideHlBar(); return; }
-    const range = sel.getRangeAt(0);
-    if (!container.contains(range.commonAncestorContainer)) { _spHideHlBar(); return; }
-    _spCurrentSel = { sel, range, chId };
-    _spShowHlBar(range);
+  if(!container)return;
+  const handler=()=>{
+    const sel=window.getSelection();
+    if(!sel||sel.isCollapsed||!sel.toString().trim()){_spHideHlBar();return;}
+    try {
+      const range=sel.getRangeAt(0);
+      if(!container.contains(range.commonAncestorContainer)){_spHideHlBar();return;}
+      _spCurrentSel={sel,range:range.cloneRange(),chId};
+      _spShowHlBar(range);
+    } catch(e){_spHideHlBar();}
   };
-  container.addEventListener('mouseup', handler);
-  container.addEventListener('touchend', () => setTimeout(handler, 150));
+  container.addEventListener('mouseup',handler);
+  container.addEventListener('touchend',()=>setTimeout(handler,150));
+
+  // Click on existing highlight → show options (remove / note)
+  container.addEventListener('click',e=>{
+    const hlSpan=e.target.closest('[data-hl-id]');
+    if(hlSpan&&!window.getSelection().toString().trim()){
+      e.stopPropagation();
+      _spShowHlOptions(hlSpan, chId);
+    }
+  });
 }
+
 function _spShowHlBar(range) {
-  const bar  = document.getElementById('sp-hl-bar');
-  if (!bar) return;
-  const rect = range.getBoundingClientRect();
-  let left   = rect.left + rect.width / 2 - 75;
-  let top    = rect.top - 48 + window.scrollY;
-  left = Math.max(6, Math.min(left, window.innerWidth - 160));
-  if (rect.top < 55) top = rect.bottom + window.scrollY + 8;
-  bar.style.left = left + 'px';
-  bar.style.top  = top  + 'px';
+  const bar=document.getElementById('sp-hl-bar');
+  if(!bar)return;
+  const rect=range.getBoundingClientRect();
+  let left=rect.left+rect.width/2-85;
+  let top=rect.top-52+window.scrollY;
+  left=Math.max(6,Math.min(left,window.innerWidth-180));
+  if(rect.top<55)top=rect.bottom+window.scrollY+8;
+  bar.style.left=left+'px'; bar.style.top=top+'px';
   bar.classList.add('show');
 }
-function _spHideHlBar() {
-  const bar = document.getElementById('sp-hl-bar');
-  if (bar) bar.classList.remove('show');
-  _spCurrentSel = null;
+function _spHideHlBar(){
+  const bar=document.getElementById('sp-hl-bar');
+  if(bar)bar.classList.remove('show');
+  _spCurrentSel=null;
 }
-document.addEventListener('click', e => {
-  if (!e.target.closest('#sp-hl-bar') && !e.target.closest('#sp-render-markdown')) {
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#sp-hl-bar')&&!e.target.closest('#sp-render-markdown')&&!e.target.closest('#sp-hl-options')){
     _spHideHlBar();
+    _spHideHlOptions();
   }
 });
+
+// Apply highlight color
 function spApplyHighlight(color) {
-  if (!_spCurrentSel) return;
-  const { sel, range, chId } = _spCurrentSel;
-  const text = sel.toString().trim();
-  if (!text) return;
-  try {
-    const hlId = 'hl_' + Date.now();
-    const span = document.createElement('span');
-    span.className    = 'sp-hl-' + color;
-    span.dataset.hlId = hlId;
-    span.dataset.color = color;
+  if(!_spCurrentSel)return;
+  const{sel,range,chId}=_spCurrentSel;
+  const text=sel.toString().trim();
+  if(!text)return;
+  try{
+    const hlId='hl_'+Date.now();
+    const span=document.createElement('span');
+    span.className='sp-hl-'+color;
+    span.dataset.hlId=hlId;
+    span.dataset.color=color;
     range.surroundContents(span);
-    sel.removeAllRanges();
-    _spSaveHighlight(chId, hlId, text, color);
+    window.getSelection().removeAllRanges();
+    _spSaveHighlight(chId,hlId,text,color,'');
     _spHideHlBar();
     showToast('✅ হাইলাইট যোগ হয়েছে');
-  } catch(e) {
+  }catch(e){
     _spHideHlBar();
     showToast('এই টেক্সট হাইলাইট করা যাচ্ছে না');
   }
 }
 function spEraseHighlight() {
-  if (!_spCurrentSel) return;
-  const { range, chId } = _spCurrentSel;
-  const container = range.commonAncestorContainer;
-  const node = (container.nodeType === 3 ? container.parentElement : container).closest('[data-hl-id]');
-  if (node) {
-    const hlId = node.dataset.hlId;
-    const parent = node.parentNode;
-    while (node.firstChild) parent.insertBefore(node.firstChild, node);
+  if(!_spCurrentSel)return;
+  const{range,chId}=_spCurrentSel;
+  const container=range.commonAncestorContainer;
+  const node=(container.nodeType===3?container.parentElement:container).closest('[data-hl-id]');
+  if(node){
+    const hlId=node.dataset.hlId;
+    const parent=node.parentNode;
+    while(node.firstChild)parent.insertBefore(node.firstChild,node);
     parent.removeChild(node);
-    _spRemoveHighlight(chId, hlId);
+    _spRemoveHighlight(chId,hlId);
     _spHideHlBar();
     showToast('হাইলাইট মুছে ফেলা হয়েছে');
-  } else {
-    _spHideHlBar();
-    showToast('এখানে কোনো হাইলাইট নেই');
+  }else{
+    _spHideHlBar();showToast('এখানে হাইলাইট নেই');
   }
 }
-function _spSaveHighlight(chId, hlId, text, color) {
-  const key = 'sp_hl_' + chId;
-  let data = {};
-  try { data = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) {}
-  data[hlId] = { text, color, ts: Date.now() };
-  localStorage.setItem(key, JSON.stringify(data));
+
+// Click on existing highlight → options popup
+let _spHlOptionsTarget=null;
+function _spShowHlOptions(spanEl, chId) {
+  _spHideHlOptions();
+  _spHlOptionsTarget={spanEl,chId};
+  let opts=document.getElementById('sp-hl-options');
+  if(!opts){
+    opts=document.createElement('div');
+    opts.id='sp-hl-options';
+    opts.style.cssText='position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:4px;box-shadow:var(--shadow-lg);min-width:170px;font-family:"Hind Siliguri",sans-serif;';
+    document.body.appendChild(opts);
+  }
+  // Get saved note
+  const key='sp_hl_'+chId;
+  let data={};try{data=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}
+  const hlId=spanEl.dataset.hlId;
+  const note=(data[hlId]&&data[hlId].note)||'';
+
+  opts.innerHTML=`
+    <div style="font-size:11px;color:var(--text3);padding:2px 4px;margin-bottom:2px">হাইলাইট বিকল্প</div>
+    <textarea id="sp-hl-note-input" placeholder="নোট লিখুন..." style="width:100%;min-height:56px;padding:6px 8px;border-radius:7px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;font-family:'Hind Siliguri',sans-serif;resize:vertical;outline:none;box-sizing:border-box">${note}</textarea>
+    <div style="display:flex;gap:6px;margin-top:2px">
+      <button onclick="_spSaveHlNote()" style="flex:1;padding:5px 8px;border-radius:7px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-family:'Hind Siliguri',sans-serif">নোট সেভ</button>
+      <button onclick="_spDeleteHlFromOptions()" style="flex:1;padding:5px 8px;border-radius:7px;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);cursor:pointer;font-size:12px;font-family:'Hind Siliguri',sans-serif">মুছুন</button>
+    </div>`;
+
+  const rect=spanEl.getBoundingClientRect();
+  let left=rect.left, top=rect.bottom+6+window.scrollY;
+  left=Math.max(6,Math.min(left,window.innerWidth-180));
+  opts.style.left=left+'px'; opts.style.top=top+'px';
+  opts.style.display='flex';
+  setTimeout(()=>document.getElementById('sp-hl-note-input')?.focus(),50);
 }
-function _spRemoveHighlight(chId, hlId) {
-  const key = 'sp_hl_' + chId;
-  let data = {};
-  try { data = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) {}
+function _spHideHlOptions(){
+  const opts=document.getElementById('sp-hl-options');
+  if(opts)opts.style.display='none';
+  _spHlOptionsTarget=null;
+}
+function _spSaveHlNote(){
+  if(!_spHlOptionsTarget)return;
+  const{spanEl,chId}=_spHlOptionsTarget;
+  const hlId=spanEl.dataset.hlId;
+  const note=document.getElementById('sp-hl-note-input')?.value||'';
+  const key='sp_hl_'+chId;
+  let data={};try{data=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}
+  if(data[hlId])data[hlId].note=note;
+  localStorage.setItem(key,JSON.stringify(data));
+  // Show note indicator on span
+  spanEl.title=note||'';
+  if(note)spanEl.setAttribute('data-note','true');
+  else spanEl.removeAttribute('data-note');
+  _spHideHlOptions();
+  showToast('✅ নোট সেভ হয়েছে');
+}
+function _spDeleteHlFromOptions(){
+  if(!_spHlOptionsTarget)return;
+  const{spanEl,chId}=_spHlOptionsTarget;
+  const hlId=spanEl.dataset.hlId;
+  const parent=spanEl.parentNode;
+  while(spanEl.firstChild)parent.insertBefore(spanEl.firstChild,spanEl);
+  parent.removeChild(spanEl);
+  _spRemoveHighlight(chId,hlId);
+  _spHideHlOptions();
+  showToast('হাইলাইট মুছে ফেলা হয়েছে');
+}
+
+// Storage helpers
+function _spSaveHighlight(chId,hlId,text,color,note) {
+  const key='sp_hl_'+chId;
+  let data={};try{data=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}
+  data[hlId]={text,color,note:note||'',ts:Date.now()};
+  localStorage.setItem(key,JSON.stringify(data));
+}
+function _spRemoveHighlight(chId,hlId) {
+  const key='sp_hl_'+chId;
+  let data={};try{data=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}
   delete data[hlId];
-  localStorage.setItem(key, JSON.stringify(data));
+  localStorage.setItem(key,JSON.stringify(data));
 }
-function _spReapplyHighlights(container, chId) {
-  let data = {};
-  try { data = JSON.parse(localStorage.getItem('sp_hl_' + chId) || '{}'); } catch(e) {}
-  for (const [hlId, hl] of Object.entries(data)) {
-    if (!hl.text) continue;
-    _spHighlightText(container, hl.text, hl.color, hlId);
+function _spReapplyHighlights(container,chId) {
+  let data={};try{data=JSON.parse(localStorage.getItem('sp_hl_'+chId)||'{}');}catch(e){}
+  for(const[hlId,hl]of Object.entries(data)){
+    if(!hl.text)continue;
+    _spHighlightText(container,hl.text,hl.color,hlId,hl.note||'');
   }
 }
-function _spHighlightText(container, searchText, color, hlId) {
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+function _spHighlightText(container,searchText,color,hlId,note) {
+  const walker=document.createTreeWalker(container,NodeFilter.SHOW_TEXT,null);
   let node;
-  while ((node = walker.nextNode())) {
-    const idx = node.nodeValue.indexOf(searchText);
-    if (idx >= 0) {
-      const range = document.createRange();
-      range.setStart(node, idx);
-      range.setEnd(node, idx + searchText.length);
-      const span = document.createElement('span');
-      span.className     = 'sp-hl-' + color;
-      span.dataset.hlId  = hlId;
-      span.dataset.color = color;
-      try { range.surroundContents(span); } catch(e) {}
+  while((node=walker.nextNode())){
+    const idx=node.nodeValue.indexOf(searchText);
+    if(idx>=0){
+      const range=document.createRange();
+      range.setStart(node,idx);range.setEnd(node,idx+searchText.length);
+      const span=document.createElement('span');
+      span.className='sp-hl-'+color;
+      span.dataset.hlId=hlId;span.dataset.color=color;
+      if(note){span.title=note;span.setAttribute('data-note','true');}
+      try{range.surroundContents(span);}catch(e){}
       break;
     }
   }
 }
 
-// ── Editor ────────────────────────────────
+// ── Editor ─────────────────────────────────
 function spOpenEditor() {
-  const node = activeChapterId && currentSubject ? findNode(currentSubject.chapters, activeChapterId) : null;
-  if (!node) { showToast('একটি অধ্যায় বেছে নিন'); return; }
-  if (!node.content) node.content = { text:'', textUrl:'', pdfs:[], videos:[], qna:[] };
-  const ta   = document.getElementById('sp-editor-textarea');
-  const name = document.getElementById('sp-editor-chapter-name');
-  if (ta)   ta.value = node.content.text || '';
-  if (name) name.textContent = '— ' + node.title;
+  const node=activeChapterId&&currentSubject?findNode(currentSubject.chapters,activeChapterId):null;
+  if(!node){showToast('একটি অধ্যায় বেছে নিন');return;}
+  if(!node.content)node.content={text:'',textUrl:'',pdfs:[],videos:[],qna:[]};
+  // For cloud-fetched: _spRenderedMdText has the text; also node.content.text was set after fetch
+  const ta=document.getElementById('sp-editor-textarea');
+  const name=document.getElementById('sp-editor-chapter-name');
+  if(ta)ta.value=node.content.text||_spRenderedMdText||'';
+  if(name)name.textContent='— '+node.title;
   spUpdatePreview();
   openModal('modal-sp-editor');
-  setTimeout(() => ta && ta.focus(), 100);
+  setTimeout(()=>ta&&ta.focus(),100);
 }
-function spUpdatePreview() {
-  const ta = document.getElementById('sp-editor-textarea');
-  const pv = document.getElementById('sp-editor-preview');
-  if (!ta || !pv) return;
-  pv.innerHTML = ta.value.trim()
-    ? _spParse(ta.value)
-    : '<p style="color:var(--text3);text-align:center;margin-top:3rem">Preview এখানে দেখাবে</p>';
+function spUpdatePreview(){
+  const ta=document.getElementById('sp-editor-textarea');
+  const pv=document.getElementById('sp-editor-preview');
+  if(!ta||!pv)return;
+  pv.innerHTML=ta.value.trim()?_spParse(ta.value):'<p style="color:var(--text3);text-align:center;margin-top:3rem">Preview এখানে দেখাবে</p>';
 }
-function spInsertMD(pre, suf) {
-  const ta = document.getElementById('sp-editor-textarea');
-  if (!ta) return;
-  const s = ta.selectionStart, e = ta.selectionEnd, t = ta.value;
-  ta.value = t.substring(0, s) + pre + t.substring(s, e) + suf + t.substring(e);
-  ta.selectionStart = s + pre.length; ta.selectionEnd = e + pre.length;
-  ta.focus(); ta.dispatchEvent(new Event('input'));
+function spInsertMD(pre,suf){
+  const ta=document.getElementById('sp-editor-textarea');
+  if(!ta)return;
+  const s=ta.selectionStart,e=ta.selectionEnd,t=ta.value;
+  ta.value=t.substring(0,s)+pre+t.substring(s,e)+suf+t.substring(e);
+  ta.selectionStart=s+pre.length;ta.selectionEnd=e+pre.length;
+  ta.focus();ta.dispatchEvent(new Event('input'));
 }
-function spSaveContent() {
-  const node = activeChapterId && currentSubject ? findNode(currentSubject.chapters, activeChapterId) : null;
-  if (!node) return;
-  const ta = document.getElementById('sp-editor-textarea');
-  if (!ta) return;
-  if (!node.content) node.content = { text:'', textUrl:'', pdfs:[], videos:[], qna:[] };
-  node.content.text    = ta.value;
-  node.content.textUrl = '';
+function spSaveContent(){
+  const node=activeChapterId&&currentSubject?findNode(currentSubject.chapters,activeChapterId):null;
+  if(!node)return;
+  const ta=document.getElementById('sp-editor-textarea');
+  if(!ta)return;
+  if(!node.content)node.content={text:'',textUrl:'',pdfs:[],videos:[],qna:[]};
+  node.content.text=ta.value;
+  node.content.textUrl='';
+  // Update cache
+  if(activeChapterId)_spFetchCache[activeChapterId]=ta.value;
+  _spRenderedMdText=ta.value;
   saveData();
   closeModal('modal-sp-editor');
   showToast('✅ সংরক্ষিত হয়েছে');
   spRenderTextTab();
 }
-function spClearContent() {
-  if (!confirm('সব কন্টেন্ট মুছবেন?')) return;
-  const ta = document.getElementById('sp-editor-textarea');
-  if (ta) { ta.value = ''; ta.dispatchEvent(new Event('input')); }
+function spClearContent(){
+  if(!confirm('সব কন্টেন্ট মুছবেন?'))return;
+  const ta=document.getElementById('sp-editor-textarea');
+  if(ta){ta.value='';ta.dispatchEvent(new Event('input'));}
 }
-// Live preview
-document.addEventListener('input', e => {
-  if (e.target.id === 'sp-editor-textarea') spUpdatePreview();
-});
+document.addEventListener('input',e=>{if(e.target.id==='sp-editor-textarea')spUpdatePreview();});
 
-// ── URL Modal ─────────────────────────────
-function spOpenURLModal() {
-  const node = activeChapterId && currentSubject ? findNode(currentSubject.chapters, activeChapterId) : null;
-  const inp  = document.getElementById('sp-url-input');
-  if (inp) inp.value = node && node.content ? (node.content.textUrl || '') : '';
+// ── URL Modal ──────────────────────────────
+function spOpenURLModal(){
+  const node=activeChapterId&&currentSubject?findNode(currentSubject.chapters,activeChapterId):null;
+  const inp=document.getElementById('sp-url-input');
+  if(inp)inp.value=node&&node.content?(node.content.textUrl||''):'';
   openModal('modal-sp-url');
 }
-function spSaveURL() {
-  const node = activeChapterId && currentSubject ? findNode(currentSubject.chapters, activeChapterId) : null;
-  if (!node) { showToast('অধ্যায় বেছে নিন'); return; }
-  const url = (document.getElementById('sp-url-input')?.value || '').trim();
-  if (!url) return;
-  if (!node.content) node.content = { text:'', textUrl:'', pdfs:[], videos:[], qna:[] };
-  node.content.textUrl = url;
-  node.content.text    = '';
+function spSaveURL(){
+  const node=activeChapterId&&currentSubject?findNode(currentSubject.chapters,activeChapterId):null;
+  if(!node){showToast('অধ্যায় বেছে নিন');return;}
+  const url=(document.getElementById('sp-url-input')?.value||'').trim();
+  if(!url)return;
+  if(!node.content)node.content={text:'',textUrl:'',pdfs:[],videos:[],qna:[]};
+  node.content.textUrl=url;
+  node.content.text='';
+  // Clear cache for this chapter so it re-fetches
+  if(activeChapterId)delete _spFetchCache[activeChapterId];
   saveData();
   closeModal('modal-sp-url');
   spRenderTextTab();
 }
 
-// ── File Upload ───────────────────────────
-function spLoadFile(input) {
-  if (!input.files?.[0]) return;
-  const node = activeChapterId && currentSubject ? findNode(currentSubject.chapters, activeChapterId) : null;
-  if (!node) { showToast('অধ্যায় বেছে নিন'); return; }
-  const reader = new FileReader();
-  reader.onload = e => {
-    if (!node.content) node.content = { text:'', textUrl:'', pdfs:[], videos:[], qna:[] };
-    node.content.text    = e.target.result;
-    node.content.textUrl = '';
+// ── File Upload ────────────────────────────
+function spLoadFile(input){
+  if(!input.files?.[0])return;
+  const node=activeChapterId&&currentSubject?findNode(currentSubject.chapters,activeChapterId):null;
+  if(!node){showToast('অধ্যায় বেছে নিন');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    if(!node.content)node.content={text:'',textUrl:'',pdfs:[],videos:[],qna:[]};
+    node.content.text=e.target.result;
+    node.content.textUrl='';
+    if(activeChapterId)_spFetchCache[activeChapterId]=e.target.result;
     saveData();
-    showToast('✅ ফাইল লোড: ' + input.files[0].name);
+    showToast('✅ ফাইল লোড: '+input.files[0].name);
     spRenderTextTab();
   };
   reader.readAsText(input.files[0]);
-  input.value = '';
+  input.value='';
 }
 
-// ── Image Insert ──────────────────────────
-function spOpenImgModal() {
-  spImgLayout = 'float'; _spSyncImgTabs();
-  openModal('modal-sp-img');
-}
-function spSetImgLayout(l) { spImgLayout = l; _spSyncImgTabs(); }
-function _spSyncImgTabs() {
-  ['float','center','grid'].forEach(t => {
-    const tab = document.getElementById('sp-img-tab-' + t);
-    const inp = document.getElementById('sp-img-inputs-' + t);
-    const on  = t === spImgLayout;
-    if (tab) {
-      tab.style.background  = on ? 'var(--accent-subtle)' : 'var(--bg3)';
-      tab.style.color       = on ? 'var(--accent-light)'  : 'var(--text2)';
-      tab.style.borderColor = on ? 'var(--accent)'        : 'var(--border2)';
-    }
-    if (inp) inp.style.display = on ? (t === 'float' ? 'block' : 'flex') : 'none';
+// ── Image Insert ───────────────────────────
+function spOpenImgModal(){spImgLayout='float';_spSyncImgTabs();openModal('modal-sp-img');}
+function spSetImgLayout(l){spImgLayout=l;_spSyncImgTabs();}
+function _spSyncImgTabs(){
+  ['float','center','grid'].forEach(t=>{
+    const tab=document.getElementById('sp-img-tab-'+t);
+    const inp=document.getElementById('sp-img-inputs-'+t);
+    const on=t===spImgLayout;
+    if(tab){tab.style.background=on?'var(--accent-subtle)':'var(--bg3)';tab.style.color=on?'var(--accent-light)':'var(--text2)';tab.style.borderColor=on?'var(--accent)':'var(--border2)';}
+    if(inp)inp.style.display=on?(t==='float'?'block':'flex'):'none';
   });
 }
-function spInsertImg() {
-  let html = '';
-  if (spImgLayout === 'float') {
-    const dir  = document.getElementById('sp-img-float-dir')?.value  || 'right';
-    const sz   = document.getElementById('sp-img-float-size')?.value || 'w-1/2 md:w-1/3';
-    const url  = document.getElementById('sp-img-float-url')?.value  || '';
-    const cap  = document.getElementById('sp-img-float-cap')?.value  || '';
-    if (!url) { showToast('ছবির URL দিন'); return; }
-    html = `<div class="${dir==='right'?'float-right':'float-left'} ${sz} ml-4 mb-2"><img src="${url}" class="rounded-lg shadow w-full" alt="${cap}">${cap?`<p class="text-center text-xs text-gray-500 mt-1 italic">${cap}</p>`:''}</div>`;
-  } else if (spImgLayout === 'center') {
-    const url = document.getElementById('sp-img-center-url')?.value || '';
-    const cap = document.getElementById('sp-img-center-cap')?.value || '';
-    if (!url) { showToast('ছবির URL দিন'); return; }
-    html = `<figure class="w-full my-4"><img src="${url}" class="mx-auto rounded-lg shadow max-h-96 block" alt="${cap}">${cap?`<figcaption class="text-center text-sm text-gray-500 mt-1 italic">${cap}</figcaption>`:''}</figure>`;
-  } else {
-    const u1 = document.getElementById('sp-img-grid-url1')?.value || '';
-    const c1 = document.getElementById('sp-img-grid-cap1')?.value || '';
-    const u2 = document.getElementById('sp-img-grid-url2')?.value || '';
-    const c2 = document.getElementById('sp-img-grid-cap2')?.value || '';
-    if (!u1||!u2) { showToast('দুটি URL দিন'); return; }
-    html = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4"><figure><img src="${u1}" class="w-full rounded-lg shadow h-auto">${c1?`<figcaption class="text-center text-xs text-gray-500 mt-1">${c1}</figcaption>`:''}</figure><figure><img src="${u2}" class="w-full rounded-lg shadow h-auto">${c2?`<figcaption class="text-center text-xs text-gray-500 mt-1">${c2}</figcaption>`:''}</figure></div>`;
+function spInsertImg(){
+  let html='';
+  if(spImgLayout==='float'){
+    const dir=document.getElementById('sp-img-float-dir')?.value||'right';
+    const sz=document.getElementById('sp-img-float-size')?.value||'w-1/2 md:w-1/3';
+    const url=document.getElementById('sp-img-float-url')?.value||'';
+    const cap=document.getElementById('sp-img-float-cap')?.value||'';
+    if(!url){showToast('ছবির URL দিন');return;}
+    html=`<div class="${dir==='right'?'float-right':'float-left'} ${sz} ml-4 mb-2"><img src="${url}" class="rounded-lg shadow w-full" alt="${cap}">${cap?`<p class="text-center text-xs text-gray-500 mt-1 italic">${cap}</p>`:''}</div>`;
+  }else if(spImgLayout==='center'){
+    const url=document.getElementById('sp-img-center-url')?.value||'';
+    const cap=document.getElementById('sp-img-center-cap')?.value||'';
+    if(!url){showToast('ছবির URL দিন');return;}
+    html=`<figure class="w-full my-4"><img src="${url}" class="mx-auto rounded-lg shadow max-h-96 block" alt="${cap}">${cap?`<figcaption class="text-center text-sm text-gray-500 mt-1 italic">${cap}</figcaption>`:''}</figure>`;
+  }else{
+    const u1=document.getElementById('sp-img-grid-url1')?.value||'';
+    const c1=document.getElementById('sp-img-grid-cap1')?.value||'';
+    const u2=document.getElementById('sp-img-grid-url2')?.value||'';
+    const c2=document.getElementById('sp-img-grid-cap2')?.value||'';
+    if(!u1||!u2){showToast('দুটি URL দিন');return;}
+    html=`<div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4"><figure><img src="${u1}" class="w-full rounded-lg shadow h-auto">${c1?`<figcaption class="text-center text-xs text-gray-500 mt-1">${c1}</figcaption>`:''}</figure><figure><img src="${u2}" class="w-full rounded-lg shadow h-auto">${c2?`<figcaption class="text-center text-xs text-gray-500 mt-1">${c2}</figcaption>`:''}</figure></div>`;
   }
-  spInsertMD(html, '');
-  document.querySelectorAll('#modal-sp-img input[type="text"]').forEach(i => i.value = '');
+  spInsertMD(html,'');
+  document.querySelectorAll('#modal-sp-img input[type="text"]').forEach(i=>i.value='');
   closeModal('modal-sp-img');
 }
 
-// ── Sample content ────────────────────────
-function spLoadSample() {
-  const node = activeChapterId && currentSubject ? findNode(currentSubject.chapters, activeChapterId) : null;
-  if (!node) return;
-  if (!node.content) node.content = { text:'', textUrl:'', pdfs:[], videos:[], qna:[] };
-  node.content.text    = `# আলো ও আলোর প্রকৃতি\n\n**আলো** হলো এক ধরনের তড়িৎচুম্বকীয় তরঙ্গ যা মানুষের চোখে দৃশ্যমান।\n\n## আলোর বৈশিষ্ট্য\n\n- **গতি**: শূন্যে ৩×১০⁸ m/s\n- **প্রতিফলন**: মসৃণ পৃষ্ঠ থেকে প্রতিফলিত হয়\n- **প্রতিসরণ**: মাধ্যম বদলে বাঁকে\n\n## প্রতিফলনের নিয়ম\n\n> আপতন কোণ = প্রতিফলন কোণ\n\n## বর্ণালী\n\n| রঙ | তরঙ্গদৈর্ঘ্য (nm) |\n|---|---|\n| বেগুনি | ৩৮০–৪৫০ |\n| নীল | ৪৫০–৪৯৫ |\n| সবুজ | ৪৯৫–৫৭০ |\n| লাল | ৬২০–৭৫০ |`;
-  node.content.textUrl = '';
-  saveData();
-  spRenderTextTab();
+// ── Sample content ─────────────────────────
+function spLoadSample(){
+  const node=activeChapterId&&currentSubject?findNode(currentSubject.chapters,activeChapterId):null;
+  if(!node)return;
+  if(!node.content)node.content={text:'',textUrl:'',pdfs:[],videos:[],qna:[]};
+  node.content.text=`# আলো ও আলোর প্রকৃতি\n\n**আলো** হলো এক ধরনের তড়িৎচুম্বকীয় তরঙ্গ যা মানুষের চোখে দৃশ্যমান।\n\n## আলোর বৈশিষ্ট্য\n\n- **গতি**: শূন্যে ৩×১০⁸ m/s\n- **প্রতিফলন**: মসৃণ পৃষ্ঠ থেকে প্রতিফলিত হয়\n- **প্রতিসরণ**: মাধ্যম বদলে বাঁকে\n\n## প্রতিফলনের নিয়ম\n\n> আপতন কোণ = প্রতিফলন কোণ\n\n## বর্ণালী\n\n| রঙ | তরঙ্গদৈর্ঘ্য (nm) |\n|---|---|\n| বেগুনি | ৩৮০–৪৫০ |\n| নীল | ৪৫০–৪৯৫ |\n| সবুজ | ৪৯৫–৫৭০ |\n| লাল | ৬২০–৭৫০ |`;
+  node.content.textUrl='';
+  if(activeChapterId)_spFetchCache[activeChapterId]=node.content.text;
+  saveData();spRenderTextTab();
 }
 
-// ── Init ──────────────────────────────────
-(function() {
-  const fs = parseInt(localStorage.getItem('sp_fontSize') || '100');
-  if (fs !== 100) spApplyFontSize(fs);
-  const lh = localStorage.getItem('sp_lineHeight');
-  if (lh) {
-    const sl = document.getElementById('sp-lh-slider');
-    if (sl) sl.value = lh;
-    document.documentElement.style.setProperty('--reader-line-height', (parseInt(lh)/10).toFixed(1));
+// ── Init ───────────────────────────────────
+(function(){
+  const fs=parseInt(localStorage.getItem('sp_fontSize')||'100');
+  if(fs!==100)spApplyFontSize(fs);
+  const lh=localStorage.getItem('sp_lineHeight');
+  if(lh){
+    const sl=document.getElementById('sp-lh-slider');
+    if(sl)sl.value=lh;
+    document.documentElement.style.setProperty('--reader-line-height',(parseInt(lh)/10).toFixed(1));
   }
 })();
 
