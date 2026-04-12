@@ -841,7 +841,7 @@
   #sp-info-bar.show { display:flex; }
   .sp-info-pill { display:flex; align-items:center; gap:3px; }
   #sp-tts-indicator { display:none; align-items:center; gap:4px; padding:1px 7px; background:var(--accent-subtle); border:1px solid var(--accent); border-radius:20px; font-size:10px; color:var(--accent-light); }
-  .sp-tts-reading { background:rgba(99,102,241,.2); outline:2px solid var(--accent); border-radius:3px; }
+  .sp-tts-reading { background:rgba(99,102,241,.15); border-radius:3px; transition:background .2s; }
   [data-note="true"]::after { content:"📝"; font-size:9px; vertical-align:super; margin-left:1px; }
   #sp-tts-indicator.show { display:flex; }
   .sp-tts-wave span { display:inline-block; width:3px; height:9px; background:var(--accent-light); border-radius:99px; margin:0 1px; animation:spTtsWave .8s ease-in-out infinite; }
@@ -853,11 +853,24 @@
   #sp-font-slider::-webkit-slider-runnable-track,#sp-lh-slider::-webkit-slider-runnable-track { background:var(--bg4); border-radius:99px; height:4px; }
   #sp-font-slider::-webkit-slider-thumb,#sp-lh-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; margin-top:-4.5px; }
 
-  /* ── Mini TOC (fixed, glass) ── */
-  #sp-mini-toc { position:fixed; right:0; top:48px; bottom:0; width:190px; background:var(--bg2); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-left:1px solid var(--border2); overflow-y:auto; padding:8px 4px; z-index:50; display:none; flex-direction:column; box-shadow:-4px 0 18px rgba(0,0,0,0.18); }
-  [data-theme="dark"] #sp-mini-toc { background:rgba(19,21,28,0.88); }
-  [data-theme="light"] #sp-mini-toc { background:rgba(255,255,255,0.88); }
-  #sp-mini-toc.show { display:flex; }
+  /* ── Mini TOC nested in sidebar ── */
+  .sp-ch-mini-toc { overflow:hidden; transition:max-height .25s ease; max-height:0; }
+  .sp-ch-mini-toc.open { max-height:600px; }
+  .sp-ch-mini-toc-item {
+    display:flex; align-items:center; gap:6px;
+    padding:4px 8px 4px 24px;
+    font-size:11px; color:var(--text3);
+    cursor:pointer; border-radius:5px;
+    transition:all .15s; border:none; background:transparent;
+    font-family:'Hind Siliguri',sans-serif; text-align:left; width:100%;
+    line-height:1.4;
+  }
+  .sp-ch-mini-toc-item:hover { background:var(--accent-subtle); color:var(--accent-light); }
+  .sp-ch-mini-toc-item.active { background:var(--accent-subtle); color:var(--accent-light); }
+  .sp-ch-mini-toc-item.h3 { padding-left:36px; font-size:10.5px; }
+  .sp-ch-mini-toc-dot { width:5px; height:5px; border-radius:50%; background:currentColor; flex-shrink:0; opacity:.6; }
+  /* Toolbar toc btn - show/hide indicator */
+  #sp-toc-btn.active { background:var(--accent-subtle); border-color:var(--accent); color:var(--accent-light); }
   .sp-toc-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--text3); padding:2px 8px 8px; }
   .sp-toc-btn { display:block; width:100%; text-align:left; padding:4px 8px; font-size:12px; color:var(--text3); border-radius:6px; cursor:pointer; background:transparent; border:none; font-family:'Hind Siliguri',sans-serif; line-height:1.4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:all .15s; }
   .sp-toc-btn:hover,.sp-toc-btn.active { background:var(--accent-subtle); color:var(--accent-light); }
@@ -878,8 +891,16 @@
   /* ── Focus mode ── */
   #sp-focus-overlay{display:none;position:fixed;inset:0;z-index:600;background:var(--bg);flex-direction:column;overflow:hidden}
   #sp-focus-overlay.show{display:flex}
-  #sp-focus-body{flex:1;overflow-y:auto;padding:48px 32px}
-  #sp-focus-close{position:fixed;top:14px;right:14px;z-index:601}
+  #sp-focus-topbar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border)}
+  #sp-focus-body{flex:1;overflow-y:auto;padding:40px 32px}
+  #sp-focus-close{position:static}
+  #sp-focus-content{max-width:700px;margin:0 auto}
+  /* Focus mode prose — force readable colors */
+  #sp-focus-content.prose { color:var(--sp-focus-text,var(--text)) !important; }
+  #sp-focus-content.prose h1,#sp-focus-content.prose h2,#sp-focus-content.prose h3 { color:var(--sp-focus-text,var(--text)) !important; }
+  #sp-focus-content.prose p,#sp-focus-content.prose li { color:var(--sp-focus-text,var(--text)) !important; }
+  #sp-focus-content.prose strong { color:var(--sp-focus-text,var(--text)) !important; }
+  #sp-focus-content.prose blockquote { color:var(--sp-focus-text,var(--text2)) !important; border-left-color:var(--accent); }
 
   /* ── Spinner & fadein ── */
   @keyframes sp-spin{to{transform:rotate(360deg)}} .sp-spin{animation:sp-spin .9s linear infinite}
@@ -1704,12 +1725,6 @@
               <p style="font-size:13px">বাম পাশ থেকে একটি অধ্যায় বেছে নিন</p>
             </div>
 
-            <!-- Mini TOC -->
-            <div id="sp-mini-toc">
-              <span class="sp-toc-label">এই পাঠে</span>
-              <div id="sp-mini-toc-items"></div>
-            </div>
-
             <!-- Book mode wrapper -->
             <div id="sp-book-mode-wrapper">
               <div id="sp-book-spread">
@@ -1885,11 +1900,26 @@
 
 <!-- Focus mode overlay -->
 <div id="sp-focus-overlay">
-  <button class="btn-icon" id="sp-focus-close" onclick="spCloseFocus()" data-tip="ফোকাস বন্ধ করুন">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-  </button>
+  <div id="sp-focus-topbar">
+    <button class="btn-icon" id="sp-focus-close" onclick="spCloseFocus()" data-tip="ফোকাস বন্ধ করুন" style="flex-shrink:0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+    </button>
+    <span style="font-size:12px;color:var(--text3);flex-shrink:0">টেক্সট রঙ:</span>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <button onclick="spFocusSetColor('var(--text)')"        style="width:22px;height:22px;border-radius:50%;background:var(--text);border:2px solid var(--border2);cursor:pointer" data-tip="ডিফল্ট"></button>
+      <button onclick="spFocusSetColor('#e8eaf0')"            style="width:22px;height:22px;border-radius:50%;background:#e8eaf0;border:2px solid var(--border2);cursor:pointer" data-tip="সাদা"></button>
+      <button onclick="spFocusSetColor('#f5deb3')"            style="width:22px;height:22px;border-radius:50%;background:#f5deb3;border:2px solid var(--border2);cursor:pointer" data-tip="হলুদাভ"></button>
+      <button onclick="spFocusSetColor('#a8d8a8')"            style="width:22px;height:22px;border-radius:50%;background:#a8d8a8;border:2px solid var(--border2);cursor:pointer" data-tip="সবুজাভ"></button>
+      <button onclick="spFocusSetColor('#aed6f1')"            style="width:22px;height:22px;border-radius:50%;background:#aed6f1;border:2px solid var(--border2);cursor:pointer" data-tip="নীলাভ"></button>
+      <button onclick="spFocusSetColor('#f1948a')"            style="width:22px;height:22px;border-radius:50%;background:#f1948a;border:2px solid var(--border2);cursor:pointer" data-tip="গোলাপি"></button>
+      <input type="color" id="sp-focus-color-custom" value="#e8eaf0" onchange="spFocusSetColor(this.value)"
+        style="width:22px;height:22px;border-radius:50%;border:2px solid var(--border2);cursor:pointer;padding:0;background:none" data-tip="কাস্টম রঙ">
+    </div>
+    <div style="flex:1"></div>
+    <span style="font-size:11px;color:var(--text3)" id="sp-focus-chapter-name"></span>
+  </div>
   <div id="sp-focus-body">
-    <div id="sp-focus-content" class="prose dark:prose-invert max-w-none" style="max-width:700px;margin:0 auto"></div>
+    <div id="sp-focus-content" class="prose dark:prose-invert max-w-none"></div>
   </div>
 </div>
 
@@ -3783,6 +3813,8 @@ function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, c
   if (tEl) tEl.textContent = mins + ' মিনিট';
   if (spSplitModeActive) _spActivateBook();
   _spBuildMiniToc(viewer);
+  // Re-render sidebar so mini-toc appears nested under active chapter
+  if(typeof renderChapters === 'function') renderChapters();
 }
 
 // ── Markdown parse ─────────────────────────
@@ -4062,25 +4094,35 @@ function _spTtsSplitSentences(text) {
 }
 
 function _spTtsHighlightSentence(idx) {
-  // Remove previous highlight
+  // Remove previous highlight from all containers
   if(_spTtsHighlightEl){
     _spTtsHighlightEl.classList.remove('sp-tts-reading');
     _spTtsHighlightEl=null;
   }
   if(idx<0)return;
   const sentence=_spTtsSentences[idx];
-  if(!sentence)return;
-  // Find sentence in rendered DOM
-  const viewer=document.getElementById('sp-render-markdown');
-  if(!viewer)return;
-  const walker=document.createTreeWalker(viewer,NodeFilter.SHOW_TEXT,null);
-  let node;
-  while((node=walker.nextNode())){
-    if(node.nodeValue.includes(sentence.substring(0,20))){
-      const span=node.parentElement;
-      if(span){span.classList.add('sp-tts-reading');_spTtsHighlightEl=span;}
-      span&&span.scrollIntoView({behavior:'smooth',block:'nearest'});
-      break;
+  if(!sentence||sentence.length<3)return;
+  const searchStr=sentence.substring(0,Math.min(25,sentence.length));
+  // Search in scroll view AND both book pages
+  const containers=[
+    document.getElementById('sp-render-markdown'),
+    document.getElementById('sp-book-left-content'),
+    document.getElementById('sp-book-right-content'),
+  ].filter(Boolean);
+  for(const container of containers){
+    if(!container||!container.innerHTML.trim())continue;
+    const walker=document.createTreeWalker(container,NodeFilter.SHOW_TEXT,null);
+    let node;
+    while((node=walker.nextNode())){
+      if(node.nodeValue.includes(searchStr)){
+        const span=node.parentElement;
+        if(span){
+          span.classList.add('sp-tts-reading');
+          _spTtsHighlightEl=span;
+          span.scrollIntoView({behavior:'smooth',block:'nearest'});
+        }
+        return;
+      }
     }
   }
 }
@@ -4091,27 +4133,24 @@ function _spTtsSpeakIdx(idx) {
   _spTtsCurIdx=idx;
   _spTtsHighlightSentence(idx);
   const utt=new SpeechSynthesisUtterance(_spTtsSentences[idx]);
-  const voices=window.speechSynthesis.getVoices();
-  const bnVoice=voices.find(v=>v.lang.startsWith('bn')||v.lang.startsWith('hi'));
-  if(bnVoice)utt.voice=bnVoice;
-  const rateEl=document.getElementById('sp-tts-rate');
-  utt.rate=rateEl?parseFloat(rateEl.value):0.92;
-  utt.pitch=1;
-  utt.onend=()=>{
-    if(_spTtsActive)_spTtsSpeakIdx(_spTtsCurIdx+1);
+  // Get voice
+  const getAndSpeak=()=>{
+    const voices=window.speechSynthesis.getVoices();
+    const bnVoice=voices.find(v=>v.lang.startsWith('bn')||v.lang.startsWith('hi'));
+    if(bnVoice)utt.voice=bnVoice;
+    const rateEl=document.getElementById('sp-tts-rate');
+    utt.rate=rateEl?parseFloat(rateEl.value):0.92;
+    utt.pitch=1;
+    utt.onend=()=>{ if(_spTtsActive) setTimeout(()=>_spTtsSpeakIdx(_spTtsCurIdx+1),80); };
+    utt.onerror=(e)=>{ if(e.error!=='interrupted'&&_spTtsActive) setTimeout(()=>_spTtsSpeakIdx(_spTtsCurIdx+1),80); };
+    window.speechSynthesis.speak(utt);
   };
-  utt.onerror=()=>{
-    if(_spTtsActive)_spTtsSpeakIdx(_spTtsCurIdx+1);
-  };
-  window.speechSynthesis.speak(utt);
+  if(window.speechSynthesis.getVoices().length>0) getAndSpeak();
+  else { window.speechSynthesis.onvoiceschanged=()=>{ window.speechSynthesis.onvoiceschanged=null; getAndSpeak(); }; getAndSpeak(); }
 }
 
 function spToggleTTS() {
-  if(_spTtsActive){
-    _spTtsStop();
-    return;
-  }
-  // Use _spRenderedMdText (available even for cloud-fetched content)
+  if(_spTtsActive){ _spTtsStop(); return; }
   const raw=_spRenderedMdText;
   if(!raw||!raw.trim()){showToast('পড়ার মতো কনটেন্ট নেই');return;}
   const plain=_spToPlain(raw);
@@ -4123,53 +4162,143 @@ function spToggleTTS() {
   const btn=document.getElementById('sp-tts-btn');
   if(ind)ind.classList.add('show');
   if(btn)btn.classList.add('active');
-  // If already was at some index (paused), resume from there
   if(_spTtsCurIdx>=_spTtsSentences.length)_spTtsCurIdx=0;
   _spTtsSpeakIdx(_spTtsCurIdx);
 }
 function spStopTTS(){_spTtsStop();}
-function spTtsNext(){if(_spTtsActive||_spTtsSentences.length)_spTtsSpeakIdx(_spTtsCurIdx+1);}
-function spTtsPrev(){if(_spTtsActive||_spTtsSentences.length)_spTtsSpeakIdx(Math.max(0,_spTtsCurIdx-1));}
+// FIX: Next/Prev do NOT stop TTS — they jump to that sentence
+function spTtsNext(){
+  if(!_spTtsActive&&!_spTtsSentences.length)return;
+  const next=_spTtsCurIdx+1;
+  if(next>=_spTtsSentences.length)return;
+  window.speechSynthesis.cancel();
+  _spTtsSpeakIdx(next);
+}
+function spTtsPrev(){
+  if(!_spTtsActive&&!_spTtsSentences.length)return;
+  const prev=Math.max(0,_spTtsCurIdx-1);
+  window.speechSynthesis.cancel();
+  _spTtsSpeakIdx(prev);
+}
+// FIX: Rate change restarts current sentence, does NOT stop TTS
 function spTtsChangeRate(val){
-  // If currently playing, restart current sentence with new rate
-  if(_spTtsActive){_spTtsSpeakIdx(_spTtsCurIdx);}
+  if(!_spTtsActive)return;
+  window.speechSynthesis.cancel();
+  _spTtsSpeakIdx(_spTtsCurIdx);
 }
 
-// ── Mini TOC ───────────────────────────────
+// ── Mini TOC — nested in sidebar chapter row ──
+// Called after render. Builds mini-toc DOM and inserts under active chapter row.
 function _spBuildMiniToc(viewer) {
-  const tocItems=document.getElementById('sp-mini-toc-items');
+  // Remove any existing mini-toc panels from sidebar
+  document.querySelectorAll('.sp-ch-mini-toc').forEach(el=>el.remove());
+
   const btn=document.getElementById('sp-toc-btn');
-  if(!tocItems||!viewer)return;
-  tocItems.innerHTML='';
-  const headings=viewer.querySelectorAll('h1,h2,h3');
+  if(!viewer){if(btn){btn.style.opacity='0.35';btn.style.pointerEvents='none';}return;}
+
+  const headings=Array.from(viewer.querySelectorAll('h1,h2,h3'));
   if(headings.length<2){
     if(btn){btn.style.opacity='0.35';btn.style.pointerEvents='none';}
+    spMiniTocVisible=false;
     return;
   }
   if(btn){btn.style.opacity='1';btn.style.pointerEvents='';}
+
+  // Build the mini-toc element
+  const tocEl=document.createElement('div');
+  tocEl.className='sp-ch-mini-toc';
+  tocEl.id='sp-ch-mini-toc-'+activeChapterId;
+  if(spMiniTocVisible)tocEl.classList.add('open');
+
   headings.forEach(h=>{
-    const b=document.createElement('button');
-    b.className='sp-toc-btn'+(h.tagName==='H3'?' h3':'');
-    b.textContent=h.textContent.trim();
-    b.onclick=()=>{
-      h.scrollIntoView({behavior:'smooth',block:'start'});
-      tocItems.querySelectorAll('.sp-toc-btn').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active');
+    const isH3=h.tagName==='H3';
+    const btn2=document.createElement('button');
+    btn2.className='sp-ch-mini-toc-item'+(isH3?' h3':'');
+    const dot=document.createElement('span');
+    dot.className='sp-ch-mini-toc-dot';
+    const txt=document.createElement('span');
+    txt.textContent=h.textContent.trim();
+    btn2.appendChild(dot);
+    btn2.appendChild(txt);
+    btn2.onclick=(e)=>{
+      e.stopPropagation();
+      // Remove active from siblings
+      tocEl.querySelectorAll('.sp-ch-mini-toc-item').forEach(x=>x.classList.remove('active'));
+      btn2.classList.add('active');
+      if(spBookModeActive){
+        // Find which page contains this heading and jump to it
+        _spBookJumpToHeading(h.id||h.textContent.trim());
+      } else {
+        h.scrollIntoView({behavior:'smooth',block:'start'});
+      }
     };
-    tocItems.appendChild(b);
+    tocEl.appendChild(btn2);
   });
+
+  // Insert after the active chapter row in sidebar
+  if(activeChapterId){
+    const chRow=document.querySelector(`#chapter-tree .ch-row[data-ch-id="${activeChapterId}"]`);
+    if(chRow&&chRow.parentElement){
+      // Insert as sibling after the row, but inside the wrap div
+      const wrap=chRow.parentElement;
+      // Find the children container (next sibling of row that is ch-children)
+      let insertTarget=chRow.nextElementSibling;
+      if(insertTarget&&insertTarget.classList.contains('ch-children')){
+        // Insert before children
+        wrap.insertBefore(tocEl,insertTarget);
+      } else {
+        // Insert right after row
+        chRow.insertAdjacentElement('afterend',tocEl);
+      }
+    }
+  }
 }
+
+// Jump to heading in book mode by finding the page that contains it
+function _spBookJumpToHeading(headingText) {
+  for(let i=0;i<spBookPages.length;i++){
+    const tmp=document.createElement('div');
+    tmp.innerHTML=spBookPages[i];
+    const found=Array.from(tmp.querySelectorAll('h1,h2,h3')).find(h=>
+      h.textContent.trim()===headingText||h.id===headingText
+    );
+    if(found){
+      // Navigate to spread containing page i
+      const step=window.innerWidth<=640?1:2;
+      const spread=step===2?(i%2===0?i:i-1):i;
+      spBookCurrentSpread=spread;
+      _spShowSpread();
+      // After render, scroll to heading in the page
+      setTimeout(()=>{
+        ['sp-book-left-content','sp-book-right-content'].forEach(id=>{
+          const el=document.getElementById(id);
+          if(!el)return;
+          const h=Array.from(el.querySelectorAll('h1,h2,h3')).find(x=>x.textContent.trim()===headingText);
+          if(h)h.scrollIntoView({behavior:'smooth',block:'start'});
+        });
+      },100);
+      return;
+    }
+  }
+}
+
 function spToggleMiniToc() {
   spMiniTocVisible=!spMiniTocVisible;
-  const toc=document.getElementById('sp-mini-toc');
   const btn=document.getElementById('sp-toc-btn');
-  if(toc)toc.classList.toggle('show',spMiniTocVisible);
   if(btn)btn.classList.toggle('active',spMiniTocVisible);
+  // Toggle all existing mini-toc panels
+  document.querySelectorAll('.sp-ch-mini-toc').forEach(el=>{
+    el.classList.toggle('open',spMiniTocVisible);
+  });
+  // If turning on and toc doesn't exist yet, rebuild
+  if(spMiniTocVisible&&!document.querySelector('.sp-ch-mini-toc')){
+    const viewer=document.getElementById('sp-render-markdown');
+    if(viewer)_spBuildMiniToc(viewer);
+  }
 }
 
 // ── Focus mode ─────────────────────────────
 function spOpenFocus() {
-  // Works for both inline and cloud-fetched (uses _spRenderedMdText)
   if(!_spRenderedMdText||!_spRenderedMdText.trim()){showToast('কনটেন্ট নেই');return;}
   const overlay=document.getElementById('sp-focus-overlay');
   const fc=document.getElementById('sp-focus-content');
@@ -4179,11 +4308,29 @@ function spOpenFocus() {
   const lh=localStorage.getItem('sp_lineHeight');
   fc.style.fontSize=(16*fs/100).toFixed(2)+'px';
   fc.style.lineHeight=lh?(parseInt(lh)/10).toFixed(1):'1.8';
+  // Apply saved color
+  const savedColor=localStorage.getItem('sp_focus_color')||'var(--text)';
+  fc.style.setProperty('--sp-focus-text',savedColor);
+  fc.style.color=savedColor;
+  // Set chapter name
+  const node=activeChapterId&&currentSubject?findNode(currentSubject.chapters,activeChapterId):null;
+  const nameEl=document.getElementById('sp-focus-chapter-name');
+  if(nameEl)nameEl.textContent=node?node.title:'';
   overlay.classList.add('show');
 }
 function spCloseFocus(){
   const overlay=document.getElementById('sp-focus-overlay');
   if(overlay)overlay.classList.remove('show');
+}
+function spFocusSetColor(color){
+  const fc=document.getElementById('sp-focus-content');
+  if(!fc)return;
+  fc.style.setProperty('--sp-focus-text',color);
+  fc.style.color=color;
+  fc.querySelectorAll('h1,h2,h3,h4,p,li,td,th,span:not([class])').forEach(el=>{
+    el.style.color=color;
+  });
+  localStorage.setItem('sp_focus_color',color);
 }
 
 // ══════════════════════════════════════════
@@ -4197,7 +4344,8 @@ function _spSetupSelection(container, chId) {
     try {
       const range=sel.getRangeAt(0);
       if(!container.contains(range.commonAncestorContainer)){_spHideHlBar();return;}
-      _spCurrentSel={sel,range:range.cloneRange(),chId};
+      // Clone range immediately while selection is live
+      _spCurrentSel={range:range.cloneRange(),chId};
       _spShowHlBar(range);
     } catch(e){_spHideHlBar();}
   };
@@ -4239,24 +4387,29 @@ document.addEventListener('click',e=>{
 
 // Apply highlight color
 function spApplyHighlight(color) {
-  if(!_spCurrentSel)return;
-  const{sel,range,chId}=_spCurrentSel;
-  const text=sel.toString().trim();
-  if(!text)return;
+  if(!_spCurrentSel||!_spCurrentSel.range)return;
+  const{range,chId}=_spCurrentSel;
+  const text=range.toString().trim();
+  if(!text||text.length<1){_spHideHlBar();showToast('টেক্সট সিলেক্ট করুন');return;}
   try{
     const hlId='hl_'+Date.now();
     const span=document.createElement('span');
     span.className='sp-hl-'+color;
     span.dataset.hlId=hlId;
     span.dataset.color=color;
-    range.surroundContents(span);
-    window.getSelection().removeAllRanges();
+    // extractContents then wrap — works even when surroundContents fails on partial nodes
+    const frag=range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+    // Clean up selection
+    const sel=window.getSelection();
+    if(sel)sel.removeAllRanges();
     _spSaveHighlight(chId,hlId,text,color,'');
     _spHideHlBar();
     showToast('✅ হাইলাইট যোগ হয়েছে');
   }catch(e){
     _spHideHlBar();
-    showToast('এই টেক্সট হাইলাইট করা যাচ্ছে না');
+    showToast('হাইলাইট করা যাচ্ছে না');
   }
 }
 function spEraseHighlight() {
