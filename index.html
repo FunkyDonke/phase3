@@ -876,17 +876,57 @@
   .sp-toc-btn:hover,.sp-toc-btn.active { background:var(--accent-subtle); color:var(--accent-light); }
   .sp-toc-btn.h3 { padding-left:16px; font-size:11px; }
 
-  /* ── Highlight ── */
+  /* ── Highlight colors ── */
   .sp-hl-yellow{background:rgba(251,191,36,.32);border-radius:2px;cursor:pointer}
   .sp-hl-green{background:rgba(52,211,153,.32);border-radius:2px;cursor:pointer}
   .sp-hl-blue{background:rgba(96,165,250,.32);border-radius:2px;cursor:pointer}
   .sp-hl-pink{background:rgba(251,113,133,.32);border-radius:2px;cursor:pointer}
-  #sp-hl-bar{position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:5px 8px;display:none;align-items:center;gap:5px;box-shadow:var(--shadow-lg)}
+  .sp-hl-custom{border-radius:2px;cursor:pointer}
+  [data-note="true"]::after{content:"📝";font-size:9px;vertical-align:super;margin-left:1px}
+
+  /* ── Highlight popup bar ── */
+  #sp-hl-bar{
+    position:fixed;z-index:9999;
+    background:var(--bg2);border:1px solid var(--border2);
+    border-radius:12px;padding:6px 8px;
+    display:none;flex-direction:column;gap:6px;
+    box-shadow:var(--shadow-lg);min-width:260px;
+  }
   #sp-hl-bar.show{display:flex}
-  .sp-hl-dot{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s;flex-shrink:0}
-  .sp-hl-dot:hover{transform:scale(1.25)}
-  .sp-hl-erase{font-size:11px;padding:2px 7px;border-radius:5px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:'Hind Siliguri',sans-serif}
+  /* Row 1: colors + custom + erase */
+  .sp-hl-row1{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+  .sp-hl-dot{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s,border-color .15s;flex-shrink:0}
+  .sp-hl-dot:hover{transform:scale(1.2);border-color:var(--border2)}
+  .sp-hl-sep{width:1px;height:16px;background:var(--border2);flex-shrink:0}
+  .sp-hl-erase{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:'Hind Siliguri',sans-serif;white-space:nowrap}
   .sp-hl-erase:hover{background:rgba(239,68,68,.12);color:#f87171}
+  /* Row 2: text format buttons */
+  .sp-fmt-row{display:flex;align-items:center;gap:3px;flex-wrap:wrap;padding-top:4px;border-top:1px solid var(--border)}
+  .sp-fmt-btn{padding:3px 7px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-size:12px;font-family:'Hind Siliguri',sans-serif;transition:all .15s;white-space:nowrap;line-height:1.3}
+  .sp-fmt-btn:hover{background:var(--accent-subtle);color:var(--accent-light);border-color:var(--accent)}
+  .sp-fmt-btn.active{background:var(--accent-subtle);color:var(--accent-light);border-color:var(--accent)}
+  /* Row 3: insert options */
+  .sp-ins-row{display:flex;align-items:center;gap:3px;flex-wrap:wrap;padding-top:4px;border-top:1px solid var(--border)}
+  .sp-ins-btn{padding:3px 8px;border-radius:5px;background:var(--bg3);border:1px solid var(--border2);color:var(--text3);cursor:pointer;font-size:11px;font-family:'Hind Siliguri',sans-serif;transition:all .15s}
+  .sp-ins-btn:hover{background:var(--accent-subtle);color:var(--accent-light);border-color:var(--accent)}
+
+  /* ── Drawing canvas overlay ── */
+  #sp-draw-overlay{display:none;position:fixed;inset:0;z-index:700;background:transparent;cursor:crosshair;touch-action:none}
+  #sp-draw-overlay.show{display:block}
+  #sp-draw-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #sp-draw-toolbar{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--bg2);border:1px solid var(--border2);border-radius:16px;
+    padding:10px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    box-shadow:var(--shadow-lg);z-index:701;
+  }
+  .sp-pen-btn{width:26px;height:26px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:border-color .15s,transform .15s;flex-shrink:0}
+  .sp-pen-btn:hover,.sp-pen-btn.active{border-color:var(--text);transform:scale(1.15)}
+  .sp-draw-size{accent-color:var(--accent);-webkit-appearance:none;appearance:none;width:60px;height:4px;background:var(--bg4);border-radius:99px;cursor:pointer}
+  .sp-draw-size::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);margin-top:-5px}
+  .sp-draw-tool-btn{padding:4px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:12px;font-family:'Hind Siliguri',sans-serif;transition:all .15s}
+  .sp-draw-tool-btn:hover{background:var(--accent-subtle);color:var(--accent-light);border-color:var(--accent)}
+  .sp-draw-tool-btn.active{background:var(--accent-subtle);color:var(--accent-light);border-color:var(--accent)}
 
   /* ── Focus mode ── */
   #sp-focus-overlay{display:none;position:fixed;inset:0;z-index:600;background:var(--bg);flex-direction:column;overflow:hidden}
@@ -1635,6 +1675,7 @@
                 <option value="1.5">খুব দ্রুত</option>
               </select>
               <button onclick="spStopTTS()" style="background:none;border:none;color:var(--accent-light);cursor:pointer;font-size:10px;padding:0;font-family:'Hind Siliguri',sans-serif">■ থামাও</button>
+              <button onclick="spTtsRestart()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0;font-family:'Hind Siliguri',sans-serif">↩ রিস্টার্ট</button>
             </div>
           </div>
 
@@ -1889,13 +1930,94 @@
      PHASE 3 MODALS
 ══════════════════════════════════════════ -->
 
-<!-- Highlight floating toolbar -->
+<!-- Highlight + Format floating toolbar -->
 <div id="sp-hl-bar">
-  <div class="sp-hl-dot" style="background:rgba(251,191,36,.7);border-color:#fbbf24" onclick="spApplyHighlight('yellow')" title="হলুদ"></div>
-  <div class="sp-hl-dot" style="background:rgba(52,211,153,.7);border-color:#34d399"  onclick="spApplyHighlight('green')"  title="সবুজ"></div>
-  <div class="sp-hl-dot" style="background:rgba(96,165,250,.7);border-color:#60a5fa"  onclick="spApplyHighlight('blue')"   title="নীল"></div>
-  <div class="sp-hl-dot" style="background:rgba(251,113,133,.7);border-color:#fb7185" onclick="spApplyHighlight('pink')"   title="গোলাপি"></div>
-  <button class="sp-hl-erase" onclick="spEraseHighlight()">✕ মুছুন</button>
+  <!-- Row 1: Highlight colors + erase -->
+  <div class="sp-hl-row1">
+    <div class="sp-hl-dot" style="background:rgba(251,191,36,.8);border-color:#fbbf24" onclick="spApplyHighlight('yellow')" title="হলুদ"></div>
+    <div class="sp-hl-dot" style="background:rgba(52,211,153,.8);border-color:#34d399"  onclick="spApplyHighlight('green')"  title="সবুজ"></div>
+    <div class="sp-hl-dot" style="background:rgba(96,165,250,.8);border-color:#60a5fa"  onclick="spApplyHighlight('blue')"   title="নীল"></div>
+    <div class="sp-hl-dot" style="background:rgba(251,113,133,.8);border-color:#fb7185" onclick="spApplyHighlight('pink')"   title="গোলাপি"></div>
+    <input type="color" id="sp-hl-custom-color" value="#a78bfa" title="কাস্টম রঙ"
+      style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);padding:0;cursor:pointer;background:none"
+      onchange="spApplyHighlight('custom',this.value)">
+    <div class="sp-hl-sep"></div>
+    <button class="sp-hl-erase" onclick="spEraseHighlight()">✕ মুছুন</button>
+  </div>
+  <!-- Row 2: Text formatting -->
+  <div class="sp-fmt-row">
+    <button class="sp-fmt-btn" onclick="spFmtWrap('strong')" title="Bold"><b>B</b></button>
+    <button class="sp-fmt-btn" onclick="spFmtWrap('em')" title="Italic"><i>I</i></button>
+    <button class="sp-fmt-btn" onclick="spFmtApply('underline')" title="Underline"><u>U</u></button>
+    <button class="sp-fmt-btn" onclick="spFmtApply('strikethrough')" title="Strikethrough"><s>S</s></button>
+    <div class="sp-hl-sep"></div>
+    <select onchange="spFmtFontSize(this.value)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:5px;font-size:11px;padding:2px 4px;cursor:pointer;font-family:'Hind Siliguri',sans-serif" title="ফন্ট সাইজ">
+      <option value="">আকার</option>
+      <option value="0.8em">ছোট</option>
+      <option value="1em">স্বাভাবিক</option>
+      <option value="1.2em">বড়</option>
+      <option value="1.5em">বড়+</option>
+      <option value="2em">খুব বড়</option>
+    </select>
+    <input type="color" id="sp-fmt-color" value="#f59e0b" title="টেক্সট রঙ"
+      style="width:22px;height:22px;border-radius:5px;border:1px solid var(--border2);padding:0;cursor:pointer;background:none"
+      onchange="spFmtColor(this.value)">
+    <select onchange="spFmtFont(this.value)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:5px;font-size:11px;padding:2px 4px;cursor:pointer;font-family:'Hind Siliguri',sans-serif;max-width:80px" title="ফন্ট">
+      <option value="">ফন্ট</option>
+      <option value="'Hind Siliguri',sans-serif">Hind</option>
+      <option value="'Tiro Bangla',serif">Tiro</option>
+      <option value="serif">Serif</option>
+      <option value="monospace">Mono</option>
+    </select>
+  </div>
+  <!-- Row 3: Insert options -->
+  <div class="sp-ins-row">
+    <span style="font-size:10px;color:var(--text3);flex-shrink:0">যুক্ত করুন:</span>
+    <button class="sp-ins-btn" onclick="spInsertAt('before','blankline')">↑ ফাঁকা</button>
+    <button class="sp-ins-btn" onclick="spInsertAt('after','blankline')">↓ ফাঁকা</button>
+    <button class="sp-ins-btn" onclick="spInsertAt('after','text')">টেক্সট</button>
+    <button class="sp-ins-btn" onclick="spInsertAt('after','image')">ছবি</button>
+    <button class="sp-ins-btn" onclick="spOpenDrawing()">✏ Drawing</button>
+  </div>
+</div>
+
+<!-- Drawing overlay -->
+<div id="sp-draw-overlay">
+  <canvas id="sp-draw-canvas"></canvas>
+</div>
+<!-- Drawing toolbar -->
+<div id="sp-draw-toolbar" style="display:none">
+  <div style="display:flex;gap:5px;align-items:center">
+    <!-- Pen colors -->
+    <button class="sp-pen-btn active" id="sp-pen-black" style="background:#1a1a1a" onclick="spDrawSetColor('#1a1a1a',this)" title="কালো"></button>
+    <button class="sp-pen-btn" style="background:#ef4444" onclick="spDrawSetColor('#ef4444',this)" title="লাল"></button>
+    <button class="sp-pen-btn" style="background:#3b82f6" onclick="spDrawSetColor('#3b82f6',this)" title="নীল"></button>
+    <button class="sp-pen-btn" style="background:#22c55e" onclick="spDrawSetColor('#22c55e',this)" title="সবুজ"></button>
+    <button class="sp-pen-btn" style="background:#f59e0b" onclick="spDrawSetColor('#f59e0b',this)" title="হলুদ"></button>
+    <button class="sp-pen-btn" style="background:#a855f7" onclick="spDrawSetColor('#a855f7',this)" title="বেগুনি"></button>
+    <button class="sp-pen-btn" style="background:#f97316" onclick="spDrawSetColor('#f97316',this)" title="কমলা"></button>
+    <input type="color" id="sp-draw-custom-color" value="#000000"
+      style="width:26px;height:26px;border-radius:50%;border:3px solid transparent;cursor:pointer;padding:0"
+      onchange="spDrawSetColor(this.value,this)" title="কাস্টম রঙ">
+  </div>
+  <div class="sp-hl-sep" style="height:24px"></div>
+  <!-- Pen size -->
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
+  <input type="range" id="sp-draw-size" class="sp-draw-size" min="1" max="20" value="3" title="কলমের আকার">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="12" cy="12" r="7"/></svg>
+  <div class="sp-hl-sep" style="height:24px"></div>
+  <!-- Tools -->
+  <button class="sp-draw-tool-btn active" id="sp-draw-pen-btn" onclick="spDrawSetTool('pen',this)">✏ কলম</button>
+  <button class="sp-draw-tool-btn" onclick="spDrawSetTool('eraser',this)">⬜ মুছনি</button>
+  <button class="sp-draw-tool-btn" onclick="spDrawUndo()">↩ Undo</button>
+  <button class="sp-draw-tool-btn" onclick="spDrawClear()">🗑 সব মুছুন</button>
+  <div class="sp-hl-sep" style="height:24px"></div>
+  <!-- Opacity -->
+  <span style="font-size:11px;color:var(--text3)">স্বচ্ছতা:</span>
+  <input type="range" id="sp-draw-opacity" class="sp-draw-size" min="10" max="100" value="100" title="স্বচ্ছতা">
+  <div class="sp-hl-sep" style="height:24px"></div>
+  <button class="sp-draw-tool-btn" onclick="spDrawSave()" style="background:var(--accent);color:#fff;border-color:var(--accent)">💾 সেভ</button>
+  <button class="sp-draw-tool-btn" onclick="spDrawClose()">✕ বন্ধ</button>
 </div>
 
 <!-- Focus mode overlay -->
@@ -3790,7 +3912,16 @@ function spRenderTextTab() {
 }
 
 function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, chId, fadein) {
-  const html = _spParse(text);
+  // Support sp-html-v1 (inline-edited HTML stored directly)
+  let html;
+  if(text.startsWith('<!-- sp-html-v1 -->')) {
+    html = text.replace('<!-- sp-html-v1 -->
+','');
+    _spRenderedMdText = text; // keep for TTS/focus (markdown-like)
+  } else {
+    html = _spParse(text);
+    _spRenderedMdText = text;
+  }
   _spRenderedHTML = html;
   if (viewer) {
     viewer.innerHTML = html;
@@ -3800,6 +3931,7 @@ function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, c
       h.style.scrollMarginTop = '70px';
     });
     _spReapplyHighlights(viewer, chId);
+    viewer._spSelSetup=false;
     _spSetupSelection(viewer, chId);
   }
   if (scrollV) scrollV.style.display = spSplitModeActive ? 'none' : '';
@@ -3981,6 +4113,8 @@ function _spShowSpread() {
   const rNum=document.getElementById('sp-book-right-num');
   if(lNum) lNum.textContent=`— ${li+1} / ${total} —`;
   if(rNum) rNum.textContent=(!mob&&ri<total)?`— ${ri+1} / ${total} —`:'';
+  // Setup selection + highlights on newly rendered book pages
+  setTimeout(()=>_spSetupBookSelection(),50);
 }
 function _spShowBlankBook() {
   const wrapper=document.getElementById('sp-book-mode-wrapper');
@@ -4181,6 +4315,11 @@ function spTtsPrev(){
   _spTtsSpeakIdx(prev);
 }
 // FIX: Rate change restarts current sentence, does NOT stop TTS
+function spTtsRestart(){
+  window.speechSynthesis.cancel();
+  _spTtsCurIdx=0;
+  _spTtsSpeakIdx(0);
+}
 function spTtsChangeRate(val){
   if(!_spTtsActive)return;
   window.speechSynthesis.cancel();
@@ -4334,43 +4473,57 @@ function spFocusSetColor(color){
 }
 
 // ══════════════════════════════════════════
-// HIGHLIGHT — with note support
+// HIGHLIGHT + FORMATTING + DRAWING
 // ══════════════════════════════════════════
+
+// Setup selection listeners on a container (scroll view OR book pages)
 function _spSetupSelection(container, chId) {
-  if(!container)return;
+  if(!container||container._spSelSetup)return;
+  container._spSelSetup=true;
+
   const handler=()=>{
     const sel=window.getSelection();
     if(!sel||sel.isCollapsed||!sel.toString().trim()){_spHideHlBar();return;}
-    try {
+    try{
       const range=sel.getRangeAt(0);
       if(!container.contains(range.commonAncestorContainer)){_spHideHlBar();return;}
-      // Clone range immediately while selection is live
-      _spCurrentSel={range:range.cloneRange(),chId};
+      _spCurrentSel={range:range.cloneRange(),chId,container};
       _spShowHlBar(range);
-    } catch(e){_spHideHlBar();}
+    }catch(e){_spHideHlBar();}
   };
   container.addEventListener('mouseup',handler);
-  container.addEventListener('touchend',()=>setTimeout(handler,150));
+  container.addEventListener('touchend',()=>setTimeout(handler,160));
 
-  // Click on existing highlight → show options (remove / note)
+  // Click on existing highlight → options popup
   container.addEventListener('click',e=>{
+    if(window.getSelection().toString().trim())return;
     const hlSpan=e.target.closest('[data-hl-id]');
-    if(hlSpan&&!window.getSelection().toString().trim()){
-      e.stopPropagation();
-      _spShowHlOptions(hlSpan, chId);
-    }
+    if(hlSpan){e.stopPropagation();_spShowHlOptions(hlSpan,chId);}
   });
 }
 
-function _spShowHlBar(range) {
+// Call this after book spread renders to attach selection to book pages
+function _spSetupBookSelection(){
+  const chId=activeChapterId;
+  if(!chId)return;
+  ['sp-book-left-content','sp-book-right-content'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el._spSelSetup=false;_spSetupSelection(el,chId);}
+  });
+}
+
+function _spShowHlBar(range){
   const bar=document.getElementById('sp-hl-bar');
   if(!bar)return;
   const rect=range.getBoundingClientRect();
-  let left=rect.left+rect.width/2-85;
-  let top=rect.top-52+window.scrollY;
-  left=Math.max(6,Math.min(left,window.innerWidth-180));
-  if(rect.top<55)top=rect.bottom+window.scrollY+8;
-  bar.style.left=left+'px'; bar.style.top=top+'px';
+  let left=rect.left+rect.width/2-130;
+  let top=rect.top-10+window.scrollY;
+  // if bar would go above viewport, show below
+  if(rect.top<160)top=rect.bottom+window.scrollY+8;
+  else top=rect.top-160+window.scrollY; // above selection
+  left=Math.max(6,Math.min(left,window.innerWidth-270));
+  bar.style.left=left+'px';
+  bar.style.top=top+'px';
   bar.classList.add('show');
 }
 function _spHideHlBar(){
@@ -4378,33 +4531,41 @@ function _spHideHlBar(){
   if(bar)bar.classList.remove('show');
   _spCurrentSel=null;
 }
-document.addEventListener('click',e=>{
-  if(!e.target.closest('#sp-hl-bar')&&!e.target.closest('#sp-render-markdown')&&!e.target.closest('#sp-hl-options')){
+// Auto-hide on outside click
+document.addEventListener('mousedown',e=>{
+  const bar=document.getElementById('sp-hl-bar');
+  if(bar&&bar.classList.contains('show')&&!bar.contains(e.target)){
     _spHideHlBar();
+  }
+  const opts=document.getElementById('sp-hl-options');
+  if(opts&&opts.style.display!=='none'&&!opts.contains(e.target)&&!e.target.closest('[data-hl-id]')){
     _spHideHlOptions();
   }
 });
 
-// Apply highlight color
-function spApplyHighlight(color) {
+// ── Apply highlight ────────────────────────
+function spApplyHighlight(color,customHex){
   if(!_spCurrentSel||!_spCurrentSel.range)return;
   const{range,chId}=_spCurrentSel;
   const text=range.toString().trim();
-  if(!text||text.length<1){_spHideHlBar();showToast('টেক্সট সিলেক্ট করুন');return;}
+  if(!text){_spHideHlBar();return;}
   try{
     const hlId='hl_'+Date.now();
     const span=document.createElement('span');
-    span.className='sp-hl-'+color;
+    if(color==='custom'&&customHex){
+      span.className='sp-hl-custom';
+      span.style.background=_spHexToRgba(customHex,0.35);
+      span.dataset.customColor=customHex;
+    } else {
+      span.className='sp-hl-'+color;
+    }
     span.dataset.hlId=hlId;
     span.dataset.color=color;
-    // extractContents then wrap — works even when surroundContents fails on partial nodes
     const frag=range.extractContents();
     span.appendChild(frag);
     range.insertNode(span);
-    // Clean up selection
-    const sel=window.getSelection();
-    if(sel)sel.removeAllRanges();
-    _spSaveHighlight(chId,hlId,text,color,'');
+    window.getSelection()?.removeAllRanges();
+    _spSaveHighlight(chId,hlId,text,color,customHex||'','');
     _spHideHlBar();
     showToast('✅ হাইলাইট যোগ হয়েছে');
   }catch(e){
@@ -4412,8 +4573,13 @@ function spApplyHighlight(color) {
     showToast('হাইলাইট করা যাচ্ছে না');
   }
 }
-function spEraseHighlight() {
-  if(!_spCurrentSel)return;
+function _spHexToRgba(hex,a){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function spEraseHighlight(){
+  if(!_spCurrentSel||!_spCurrentSel.range)return;
   const{range,chId}=_spCurrentSel;
   const container=range.commonAncestorContainer;
   const node=(container.nodeType===3?container.parentElement:container).closest('[data-hl-id]');
@@ -4425,42 +4591,169 @@ function spEraseHighlight() {
     _spRemoveHighlight(chId,hlId);
     _spHideHlBar();
     showToast('হাইলাইট মুছে ফেলা হয়েছে');
-  }else{
-    _spHideHlBar();showToast('এখানে হাইলাইট নেই');
+  }else{_spHideHlBar();showToast('এখানে হাইলাইট নেই');}
+}
+
+// ── Text Formatting ────────────────────────
+function spFmtWrap(tag){
+  if(!_spCurrentSel||!_spCurrentSel.range)return;
+  const{range,chId}=_spCurrentSel;
+  if(!range.toString().trim())return;
+  try{
+    const el=document.createElement(tag);
+    const frag=range.extractContents();
+    el.appendChild(frag);
+    range.insertNode(el);
+    window.getSelection()?.removeAllRanges();
+    _spSaveData();
+  }catch(e){showToast('ফরম্যাট করা যাচ্ছে না');}
+}
+function spFmtApply(type){
+  if(!_spCurrentSel||!_spCurrentSel.range)return;
+  const{range}=_spCurrentSel;
+  if(!range.toString().trim())return;
+  try{
+    const span=document.createElement('span');
+    if(type==='underline')span.style.textDecoration='underline';
+    if(type==='strikethrough')span.style.textDecoration='line-through';
+    const frag=range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+    window.getSelection()?.removeAllRanges();
+    _spSaveData();
+  }catch(e){}
+}
+function spFmtFontSize(size){
+  if(!size||!_spCurrentSel||!_spCurrentSel.range)return;
+  const{range}=_spCurrentSel;
+  if(!range.toString().trim())return;
+  try{
+    const span=document.createElement('span');
+    span.style.fontSize=size;
+    const frag=range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+    window.getSelection()?.removeAllRanges();
+    _spSaveData();
+  }catch(e){}
+}
+function spFmtColor(hex){
+  if(!_spCurrentSel||!_spCurrentSel.range)return;
+  const{range}=_spCurrentSel;
+  if(!range.toString().trim())return;
+  try{
+    const span=document.createElement('span');
+    span.style.color=hex;
+    const frag=range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+    window.getSelection()?.removeAllRanges();
+    _spSaveData();
+  }catch(e){}
+}
+function spFmtFont(font){
+  if(!font||!_spCurrentSel||!_spCurrentSel.range)return;
+  const{range}=_spCurrentSel;
+  if(!range.toString().trim())return;
+  try{
+    const span=document.createElement('span');
+    span.style.fontFamily=font;
+    const frag=range.extractContents();
+    span.appendChild(frag);
+    range.insertNode(span);
+    window.getSelection()?.removeAllRanges();
+    _spSaveData();
+  }catch(e){}
+}
+
+// ── Insert before/after ────────────────────
+function spInsertAt(pos,type){
+  if(!_spCurrentSel||!_spCurrentSel.range)return;
+  const{range,chId}=_spCurrentSel;
+  _spHideHlBar();
+  // Find the block-level ancestor of the selection
+  let node=range.startContainer;
+  while(node&&node.parentElement&&!['P','H1','H2','H3','H4','H5','H6','LI','BLOCKQUOTE','DIV'].includes(node.parentElement.tagName)){
+    node=node.parentElement;
+  }
+  const block=node.parentElement||node;
+
+  if(type==='blankline'){
+    const br=document.createElement('p');
+    br.innerHTML='&nbsp;';
+    br.style.cssText='min-height:1.8em;margin:0;';
+    if(pos==='before')block.parentNode.insertBefore(br,block);
+    else block.parentNode.insertBefore(br,block.nextSibling);
+    _spSaveData();
+    showToast('✅ ফাঁকা লাইন যোগ হয়েছে');
+  } else if(type==='text'){
+    const txt=prompt('যে টেক্সট যোগ করবেন:','');
+    if(!txt)return;
+    const p=document.createElement('p');
+    p.textContent=txt;
+    if(pos==='before')block.parentNode.insertBefore(p,block);
+    else block.parentNode.insertBefore(p,block.nextSibling);
+    _spSaveData();
+    showToast('✅ টেক্সট যোগ হয়েছে');
+  } else if(type==='image'){
+    const url=prompt('ছবির URL:','');
+    if(!url)return;
+    const fig=document.createElement('figure');
+    fig.innerHTML=`<img src="${url}" style="max-width:100%;border-radius:8px;display:block;margin:0 auto" onerror="this.style.display='none'">`;
+    if(pos==='before')block.parentNode.insertBefore(fig,block);
+    else block.parentNode.insertBefore(fig,block.nextSibling);
+    _spSaveData();
+    showToast('✅ ছবি যোগ হয়েছে');
   }
 }
 
-// Click on existing highlight → options popup
+// Save rendered HTML back to node.content.text after in-place edits
+function _spSaveData(){
+  const node=activeChapterId&&currentSubject?findNode(currentSubject.chapters,activeChapterId):null;
+  if(!node)return;
+  const viewer=document.getElementById('sp-render-markdown');
+  if(!viewer)return;
+  // Serialize current rendered HTML back to a simple innerHTML
+  if(!node.content)node.content={text:'',textUrl:'',pdfs:[],videos:[],qna:[]};
+  // Store as-is HTML (we'll wrap it as a special marker)
+  node.content.text='<!-- sp-html-v1 -->
+'+viewer.innerHTML;
+  node.content.textUrl='';
+  _spRenderedMdText=node.content.text;
+  if(activeChapterId)_spFetchCache[activeChapterId]=node.content.text;
+  saveData();
+}
+
+// ── Highlight options popup (note + delete) ─
 let _spHlOptionsTarget=null;
-function _spShowHlOptions(spanEl, chId) {
+function _spShowHlOptions(spanEl,chId){
   _spHideHlOptions();
   _spHlOptionsTarget={spanEl,chId};
   let opts=document.getElementById('sp-hl-options');
   if(!opts){
     opts=document.createElement('div');
     opts.id='sp-hl-options';
-    opts.style.cssText='position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:4px;box-shadow:var(--shadow-lg);min-width:170px;font-family:"Hind Siliguri",sans-serif;';
+    opts.style.cssText='position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-lg);min-width:200px;font-family:"Hind Siliguri",sans-serif;';
     document.body.appendChild(opts);
   }
-  // Get saved note
   const key='sp_hl_'+chId;
   let data={};try{data=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}
   const hlId=spanEl.dataset.hlId;
-  const note=(data[hlId]&&data[hlId].note)||'';
+  const saved=data[hlId]||{};
+  const note=saved.note||'';
 
   opts.innerHTML=`
-    <div style="font-size:11px;color:var(--text3);padding:2px 4px;margin-bottom:2px">হাইলাইট বিকল্প</div>
-    <textarea id="sp-hl-note-input" placeholder="নোট লিখুন..." style="width:100%;min-height:56px;padding:6px 8px;border-radius:7px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;font-family:'Hind Siliguri',sans-serif;resize:vertical;outline:none;box-sizing:border-box">${note}</textarea>
-    <div style="display:flex;gap:6px;margin-top:2px">
-      <button onclick="_spSaveHlNote()" style="flex:1;padding:5px 8px;border-radius:7px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-family:'Hind Siliguri',sans-serif">নোট সেভ</button>
-      <button onclick="_spDeleteHlFromOptions()" style="flex:1;padding:5px 8px;border-radius:7px;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);cursor:pointer;font-size:12px;font-family:'Hind Siliguri',sans-serif">মুছুন</button>
+    <div style="font-size:11px;color:var(--text3);font-weight:600">📌 হাইলাইট বিকল্প</div>
+    <textarea id="sp-hl-note-input" placeholder="নোট লিখুন..." style="width:100%;min-height:60px;padding:6px 8px;border-radius:7px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:12px;font-family:'Hind Siliguri',sans-serif;resize:vertical;outline:none;box-sizing:border-box">${note}</textarea>
+    <div style="display:flex;gap:6px">
+      <button onclick="_spSaveHlNote()" style="flex:1;padding:5px 8px;border-radius:7px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-family:'Hind Siliguri',sans-serif">💾 নোট সেভ</button>
+      <button onclick="_spDeleteHlFromOptions()" style="flex:1;padding:5px 8px;border-radius:7px;background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.25);cursor:pointer;font-size:12px;font-family:'Hind Siliguri',sans-serif">🗑 মুছুন</button>
     </div>`;
 
   const rect=spanEl.getBoundingClientRect();
-  let left=rect.left, top=rect.bottom+6+window.scrollY;
-  left=Math.max(6,Math.min(left,window.innerWidth-180));
-  opts.style.left=left+'px'; opts.style.top=top+'px';
-  opts.style.display='flex';
+  let left=rect.left,top=rect.bottom+8+window.scrollY;
+  left=Math.max(6,Math.min(left,window.innerWidth-210));
+  opts.style.left=left+'px';opts.style.top=top+'px';opts.style.display='flex';
   setTimeout(()=>document.getElementById('sp-hl-note-input')?.focus(),50);
 }
 function _spHideHlOptions(){
@@ -4477,8 +4770,7 @@ function _spSaveHlNote(){
   let data={};try{data=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}
   if(data[hlId])data[hlId].note=note;
   localStorage.setItem(key,JSON.stringify(data));
-  // Show note indicator on span
-  spanEl.title=note||'';
+  spanEl.title=note;
   if(note)spanEl.setAttribute('data-note','true');
   else spanEl.removeAttribute('data-note');
   _spHideHlOptions();
@@ -4496,27 +4788,27 @@ function _spDeleteHlFromOptions(){
   showToast('হাইলাইট মুছে ফেলা হয়েছে');
 }
 
-// Storage helpers
-function _spSaveHighlight(chId,hlId,text,color,note) {
+// ── Storage helpers ────────────────────────
+function _spSaveHighlight(chId,hlId,text,color,customHex,note){
   const key='sp_hl_'+chId;
   let data={};try{data=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}
-  data[hlId]={text,color,note:note||'',ts:Date.now()};
+  data[hlId]={text,color,customHex:customHex||'',note:note||'',ts:Date.now()};
   localStorage.setItem(key,JSON.stringify(data));
 }
-function _spRemoveHighlight(chId,hlId) {
+function _spRemoveHighlight(chId,hlId){
   const key='sp_hl_'+chId;
   let data={};try{data=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}
   delete data[hlId];
   localStorage.setItem(key,JSON.stringify(data));
 }
-function _spReapplyHighlights(container,chId) {
+function _spReapplyHighlights(container,chId){
   let data={};try{data=JSON.parse(localStorage.getItem('sp_hl_'+chId)||'{}');}catch(e){}
   for(const[hlId,hl]of Object.entries(data)){
     if(!hl.text)continue;
-    _spHighlightText(container,hl.text,hl.color,hlId,hl.note||'');
+    _spHighlightText(container,hl.text,hl.color,hlId,hl.note||'',hl.customHex||'');
   }
 }
-function _spHighlightText(container,searchText,color,hlId,note) {
+function _spHighlightText(container,searchText,color,hlId,note,customHex){
   const walker=document.createTreeWalker(container,NodeFilter.SHOW_TEXT,null);
   let node;
   while((node=walker.nextNode())){
@@ -4525,7 +4817,12 @@ function _spHighlightText(container,searchText,color,hlId,note) {
       const range=document.createRange();
       range.setStart(node,idx);range.setEnd(node,idx+searchText.length);
       const span=document.createElement('span');
-      span.className='sp-hl-'+color;
+      if(color==='custom'&&customHex){
+        span.className='sp-hl-custom';
+        span.style.background=_spHexToRgba(customHex,0.35);
+      } else {
+        span.className='sp-hl-'+color;
+      }
       span.dataset.hlId=hlId;span.dataset.color=color;
       if(note){span.title=note;span.setAttribute('data-note','true');}
       try{range.surroundContents(span);}catch(e){}
@@ -4533,6 +4830,151 @@ function _spHighlightText(container,searchText,color,hlId,note) {
     }
   }
 }
+
+// ══════════════════════════════════════════
+// DRAWING SYSTEM
+// ══════════════════════════════════════════
+let _spDrawCtx=null,_spDrawing=false,_spDrawColor='#1a1a1a',_spDrawSize=3,_spDrawTool='pen';
+let _spDrawHistory=[]; // array of ImageData for undo
+let _spDrawOpacity=1;
+
+function spOpenDrawing(){
+  _spHideHlBar();
+  const overlay=document.getElementById('sp-draw-overlay');
+  const canvas=document.getElementById('sp-draw-canvas');
+  const toolbar=document.getElementById('sp-draw-toolbar');
+  if(!overlay||!canvas||!toolbar)return;
+
+  // Size canvas to full viewport
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+  _spDrawCtx=canvas.getContext('2d');
+  _spDrawCtx.lineCap='round';
+  _spDrawCtx.lineJoin='round';
+
+  // Load saved drawing if any
+  const chId=activeChapterId;
+  if(chId){
+    const saved=localStorage.getItem('sp_draw_'+chId);
+    if(saved){
+      const img=new Image();
+      img.onload=()=>{_spDrawCtx.drawImage(img,0,0);_spDrawSaveHistory();};
+      img.src=saved;
+    } else {
+      _spDrawSaveHistory();
+    }
+  }
+
+  overlay.classList.add('show');
+  toolbar.style.display='flex';
+
+  // Mouse events
+  canvas.onmousedown =e=>{_spDrawing=true;_spDrawStart(e.clientX,e.clientY);};
+  canvas.onmousemove =e=>{if(_spDrawing)_spDrawMove(e.clientX,e.clientY);};
+  canvas.onmouseup   =()=>{if(_spDrawing){_spDrawing=false;_spDrawSaveHistory();}};
+  canvas.onmouseleave=()=>{if(_spDrawing){_spDrawing=false;_spDrawSaveHistory();}};
+  // Touch events
+  canvas.ontouchstart=e=>{e.preventDefault();const t=e.touches[0];_spDrawing=true;_spDrawStart(t.clientX,t.clientY);};
+  canvas.ontouchmove =e=>{e.preventDefault();if(_spDrawing){const t=e.touches[0];_spDrawMove(t.clientX,t.clientY);}};
+  canvas.ontouchend  =()=>{if(_spDrawing){_spDrawing=false;_spDrawSaveHistory();}};
+
+  showToast('✏ Drawing মোড চালু — যেকোনো জায়গায় আঁকুন');
+}
+function _spDrawStart(x,y){
+  if(!_spDrawCtx)return;
+  _spDrawCtx.beginPath();
+  _spDrawCtx.moveTo(x,y);
+  _spApplyDrawStyle();
+}
+function _spDrawMove(x,y){
+  if(!_spDrawCtx)return;
+  _spDrawCtx.lineTo(x,y);
+  _spDrawCtx.stroke();
+}
+function _spApplyDrawStyle(){
+  if(!_spDrawCtx)return;
+  if(_spDrawTool==='eraser'){
+    _spDrawCtx.globalCompositeOperation='destination-out';
+    _spDrawCtx.strokeStyle='rgba(0,0,0,1)';
+    _spDrawCtx.lineWidth=_spDrawSize*4;
+  } else {
+    _spDrawCtx.globalCompositeOperation='source-over';
+    const op=parseInt(document.getElementById('sp-draw-opacity')?.value||'100')/100;
+    const hex=_spDrawColor;
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+    _spDrawCtx.strokeStyle=`rgba(${r},${g},${b},${op})`;
+    _spDrawCtx.lineWidth=_spDrawSize;
+  }
+}
+function _spDrawSaveHistory(){
+  const canvas=document.getElementById('sp-draw-canvas');
+  if(!canvas||!_spDrawCtx)return;
+  _spDrawHistory.push(_spDrawCtx.getImageData(0,0,canvas.width,canvas.height));
+  if(_spDrawHistory.length>30)_spDrawHistory.shift();
+}
+function spDrawSetColor(hex,btn){
+  _spDrawColor=hex;
+  // Update active pen button
+  document.querySelectorAll('.sp-pen-btn').forEach(b=>b.classList.remove('active'));
+  if(btn&&btn.classList)btn.classList.add('active');
+  _spDrawTool='pen';
+  const penBtn=document.getElementById('sp-draw-pen-btn');
+  if(penBtn){document.querySelectorAll('.sp-draw-tool-btn').forEach(b=>b.classList.remove('active'));penBtn.classList.add('active');}
+}
+function spDrawSetTool(tool,btn){
+  _spDrawTool=tool;
+  document.querySelectorAll('.sp-draw-tool-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+}
+function spDrawUndo(){
+  if(_spDrawHistory.length<=1)return;
+  _spDrawHistory.pop();
+  const canvas=document.getElementById('sp-draw-canvas');
+  if(!canvas||!_spDrawCtx)return;
+  _spDrawCtx.putImageData(_spDrawHistory[_spDrawHistory.length-1],0,0);
+}
+function spDrawClear(){
+  if(!confirm('সব drawing মুছে ফেলবেন?'))return;
+  const canvas=document.getElementById('sp-draw-canvas');
+  if(!canvas||!_spDrawCtx)return;
+  _spDrawCtx.clearRect(0,0,canvas.width,canvas.height);
+  _spDrawHistory=[];
+  _spDrawSaveHistory();
+}
+function spDrawSave(){
+  const canvas=document.getElementById('sp-draw-canvas');
+  if(!canvas||!activeChapterId)return;
+  try{
+    const dataURL=canvas.toDataURL('image/png');
+    localStorage.setItem('sp_draw_'+activeChapterId,dataURL);
+    showToast('✅ Drawing সেভ হয়েছে');
+  }catch(e){showToast('❌ সেভ ব্যর্থ (localStorage পূর্ণ হতে পারে)');}
+}
+function spDrawClose(){
+  // Ask to save if changes
+  const overlay=document.getElementById('sp-draw-overlay');
+  const toolbar=document.getElementById('sp-draw-toolbar');
+  if(overlay)overlay.classList.remove('show');
+  if(toolbar)toolbar.style.display='none';
+  _spDrawing=false;
+  // Size change listener cleanup
+  const canvas=document.getElementById('sp-draw-canvas');
+  if(canvas){canvas.onmousedown=canvas.onmousemove=canvas.onmouseup=canvas.onmouseleave=null;}
+}
+// Update pen size from slider
+document.addEventListener('input',e=>{
+  if(e.target.id==='sp-draw-size')_spDrawSize=parseInt(e.target.value);
+});
+// Resize canvas if window resizes during drawing
+window.addEventListener('resize',()=>{
+  const overlay=document.getElementById('sp-draw-overlay');
+  if(!overlay||!overlay.classList.contains('show'))return;
+  const canvas=document.getElementById('sp-draw-canvas');
+  if(!canvas||!_spDrawCtx)return;
+  const saved=_spDrawCtx.getImageData(0,0,canvas.width,canvas.height);
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  _spDrawCtx.putImageData(saved,0,0);
+});
 
 // ── Editor ─────────────────────────────────
 function spOpenEditor() {
