@@ -911,9 +911,9 @@
   .sp-ins-btn:hover{background:var(--accent-subtle);color:var(--accent-light);border-color:var(--accent)}
 
   /* ── Drawing canvas overlay ── */
-  #sp-draw-overlay{display:none;position:fixed;inset:0;z-index:700;background:transparent;cursor:crosshair;touch-action:none}
+  #sp-draw-overlay{display:none;position:fixed;inset:0;z-index:700;background:transparent;touch-action:none}
   #sp-draw-overlay.show{display:block}
-  #sp-draw-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #sp-draw-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto;cursor:crosshair}
   #sp-draw-toolbar{
     position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
     background:var(--bg2);border:1px solid var(--border2);border-radius:16px;
@@ -1664,6 +1664,7 @@
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
               </button>
               <div class="sp-tts-wave"><span></span><span></span><span></span></div>
+              <button id="sp-tts-pause-btn" onclick="spTtsPause()" style="background:none;border:none;color:var(--accent-light);cursor:pointer;padding:0;display:flex;align-items:center;font-size:12px" data-tip="পজ/চালু">⏸</button>
               <button onclick="spTtsNext()" style="background:none;border:none;color:var(--accent-light);cursor:pointer;padding:0;display:flex;align-items:center" data-tip="পরের বাক্য">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
               </button>
@@ -1934,35 +1935,40 @@
 <div id="sp-hl-bar">
   <!-- Row 1: Highlight colors + erase -->
   <div class="sp-hl-row1">
-    <div class="sp-hl-dot" style="background:rgba(251,191,36,.8);border-color:#fbbf24" onclick="spApplyHighlight('yellow')" title="হলুদ"></div>
-    <div class="sp-hl-dot" style="background:rgba(52,211,153,.8);border-color:#34d399"  onclick="spApplyHighlight('green')"  title="সবুজ"></div>
-    <div class="sp-hl-dot" style="background:rgba(96,165,250,.8);border-color:#60a5fa"  onclick="spApplyHighlight('blue')"   title="নীল"></div>
-    <div class="sp-hl-dot" style="background:rgba(251,113,133,.8);border-color:#fb7185" onclick="spApplyHighlight('pink')"   title="গোলাপি"></div>
-    <input type="color" id="sp-hl-custom-color" value="#a78bfa" title="কাস্টম রঙ"
+    <div class="sp-hl-dot" style="background:rgba(251,191,36,.85);border-color:#fbbf24" onclick="spApplyHighlight('yellow')" title="হলুদ"></div>
+    <div class="sp-hl-dot" style="background:rgba(52,211,153,.85);border-color:#34d399"  onclick="spApplyHighlight('green')"  title="সবুজ"></div>
+    <div class="sp-hl-dot" style="background:rgba(96,165,250,.85);border-color:#60a5fa"  onclick="spApplyHighlight('blue')"   title="নীল"></div>
+    <div class="sp-hl-dot" style="background:rgba(251,113,133,.85);border-color:#fb7185" onclick="spApplyHighlight('pink')"   title="গোলাপি"></div>
+    <input type="color" id="sp-hl-custom-color" value="#a78bfa" title="কাস্টম হাইলাইট রঙ"
       style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);padding:0;cursor:pointer;background:none"
-      onchange="spApplyHighlight('custom',this.value)">
+      oninput="spApplyHighlight('custom',this.value)">
     <div class="sp-hl-sep"></div>
     <button class="sp-hl-erase" onclick="spEraseHighlight()">✕ মুছুন</button>
   </div>
   <!-- Row 2: Text formatting -->
   <div class="sp-fmt-row">
-    <button class="sp-fmt-btn" onclick="spFmtWrap('strong')" title="Bold"><b>B</b></button>
-    <button class="sp-fmt-btn" onclick="spFmtWrap('em')" title="Italic"><i>I</i></button>
-    <button class="sp-fmt-btn" onclick="spFmtApply('underline')" title="Underline"><u>U</u></button>
-    <button class="sp-fmt-btn" onclick="spFmtApply('strikethrough')" title="Strikethrough"><s>S</s></button>
+    <button class="sp-fmt-btn" id="sp-fmt-bold"  onclick="spFmtToggle('bold')"          title="বোল্ড"><b>B</b></button>
+    <button class="sp-fmt-btn" id="sp-fmt-italic" onclick="spFmtToggle('italic')"        title="ইটালিক"><i>I</i></button>
+    <button class="sp-fmt-btn" id="sp-fmt-under"  onclick="spFmtToggle('underline')"     title="আন্ডারলাইন"><u>U</u></button>
+    <button class="sp-fmt-btn" id="sp-fmt-strike" onclick="spFmtToggle('strikethrough')" title="স্ট্রাইকথ্রু"><s>S</s></button>
+    <button class="sp-fmt-btn" onclick="spFmtReset()" title="সব ফরম্যাট মুছুন" style="font-size:10px;color:#f87171">↺ রিসেট</button>
     <div class="sp-hl-sep"></div>
-    <select onchange="spFmtFontSize(this.value)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:5px;font-size:11px;padding:2px 4px;cursor:pointer;font-family:'Hind Siliguri',sans-serif" title="ফন্ট সাইজ">
-      <option value="">আকার</option>
-      <option value="0.8em">ছোট</option>
-      <option value="1em">স্বাভাবিক</option>
-      <option value="1.2em">বড়</option>
-      <option value="1.5em">বড়+</option>
-      <option value="2em">খুব বড়</option>
-    </select>
-    <input type="color" id="sp-fmt-color" value="#f59e0b" title="টেক্সট রঙ"
+    <!-- Pixel font size: +/- buttons + input -->
+    <button class="sp-fmt-btn" onclick="spFmtPxSize(-1)" style="font-size:13px;font-weight:700;padding:2px 7px">A-</button>
+    <input type="number" id="sp-fmt-px" value="16" min="8" max="72"
+      style="width:38px;text-align:center;background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:5px;font-size:11px;padding:2px 4px;outline:none"
+      onchange="spFmtSetPx(this.value)" title="px আকার">
+    <button class="sp-fmt-btn" onclick="spFmtPxSize(+1)" style="font-size:13px;font-weight:700;padding:2px 7px">A+</button>
+    <div class="sp-hl-sep"></div>
+    <!-- Text color — applies immediately on input -->
+    <label style="font-size:10px;color:var(--text3);white-space:nowrap">রঙ:</label>
+    <input type="color" id="sp-fmt-color" value="#e8eaf0" title="টেক্সট রঙ"
       style="width:22px;height:22px;border-radius:5px;border:1px solid var(--border2);padding:0;cursor:pointer;background:none"
-      onchange="spFmtColor(this.value)">
-    <select onchange="spFmtFont(this.value)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:5px;font-size:11px;padding:2px 4px;cursor:pointer;font-family:'Hind Siliguri',sans-serif;max-width:80px" title="ফন্ট">
+      oninput="spFmtColor(this.value)">
+    <button class="sp-fmt-btn" onclick="spFmtColor('inherit')" style="font-size:10px" title="রঙ মুছুন">✕</button>
+    <div class="sp-hl-sep"></div>
+    <!-- Font family -->
+    <select id="sp-fmt-font" onchange="spFmtFont(this.value)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:5px;font-size:11px;padding:2px 4px;cursor:pointer;font-family:'Hind Siliguri',sans-serif;max-width:78px" title="ফন্ট">
       <option value="">ফন্ট</option>
       <option value="'Hind Siliguri',sans-serif">Hind</option>
       <option value="'Tiro Bangla',serif">Tiro</option>
@@ -1976,7 +1982,7 @@
     <button class="sp-ins-btn" onclick="spInsertAt('before','blankline')">↑ ফাঁকা</button>
     <button class="sp-ins-btn" onclick="spInsertAt('after','blankline')">↓ ফাঁকা</button>
     <button class="sp-ins-btn" onclick="spInsertAt('after','text')">টেক্সট</button>
-    <button class="sp-ins-btn" onclick="spInsertAt('after','image')">ছবি</button>
+    <button class="sp-ins-btn" onclick="spInsertAt('after','image')">📷 ছবি</button>
     <button class="sp-ins-btn" onclick="spOpenDrawing()">✏ Drawing</button>
   </div>
 </div>
@@ -3915,8 +3921,7 @@ function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, c
   // Support sp-html-v1 (inline-edited HTML stored directly)
   let html;
   if(text.startsWith('<!-- sp-html-v1 -->')) {
-    html = text.replace('<!-- sp-html-v1 -->
-','');
+    html = text.replace('<!-- sp-html-v1 -->', '').trimStart();
     _spRenderedMdText = text; // keep for TTS/focus (markdown-like)
   } else {
     html = _spParse(text);
@@ -3933,6 +3938,7 @@ function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, c
     _spReapplyHighlights(viewer, chId);
     viewer._spSelSetup=false;
     _spSetupSelection(viewer, chId);
+    _spMakeImgsDeleteable(viewer);
   }
   if (scrollV) scrollV.style.display = spSplitModeActive ? 'none' : '';
   if (emptyEl) emptyEl.style.display = 'none';
@@ -3959,18 +3965,26 @@ function _spParse(md) {
 
 // ── Strip markdown to plain text ───────────
 function _spToPlain(md) {
+  // Use rendered DOM textContent — no markdown tags at all
+  const viewer = document.getElementById('sp-render-markdown');
+  if(viewer && viewer.textContent && viewer.textContent.trim()) {
+    return viewer.textContent.replace(/\n{3,}/g,'\n\n').trim();
+  }
+  // Fallback: strip markdown
   return md
-    .replace(/#{1,6}\s+/g, '')         // headings
-    .replace(/\*\*(.+?)\*\*/g, '$1')   // bold
-    .replace(/\*(.+?)\*/g, '$1')       // italic
-    .replace(/\[(.+?)\]\(.+?\)/g, '$1')// links
-    .replace(/`(.+?)`/g, '$1')         // inline code
-    .replace(/```[\s\S]*?```/g, '')     // code blocks
-    .replace(/^[-*+]\s+/gm, '')        // list items
-    .replace(/^\d+\.\s+/gm, '')        // numbered lists
-    .replace(/^>\s+/gm, '')            // blockquotes
-    .replace(/^---+$/gm, '।')          // hr
-    .replace(/\n{2,}/g, '\n')
+    .replace(/```[\s\S]*?```/g,'')
+    .replace(/`[^`]+`/g,'')
+    .replace(/^#{1,6}\s+/gm,'')
+    .replace(/\*\*(.+?)\*\*/g,'$1')
+    .replace(/\*(.+?)\*/g,'$1')
+    .replace(/\[(.+?)\]\(.+?\)/g,'$1')
+    .replace(/^[-*+]\s+/gm,'')
+    .replace(/^\d+\.\s+/gm,'')
+    .replace(/^>\s+/gm,'')
+    .replace(/!\[.*?\]\(.*?\)/g,'')
+    .replace(/\|.*?\|/g,'')
+    .replace(/---+/g,'।')
+    .replace(/\n{2,}/g,'\n')
     .trim();
 }
 
@@ -4211,14 +4225,37 @@ window.addEventListener('resize',()=>{
 // ══════════════════════════════════════════
 // TTS — sentence-by-sentence with prev/next
 // ══════════════════════════════════════════
+let _spTtsPaused = false;
+
 function _spTtsStop() {
   if(typeof speechSynthesis!=='undefined') window.speechSynthesis.cancel();
   _spTtsActive=false;
+  _spTtsPaused=false;
   _spTtsHighlightSentence(-1);
   const ind=document.getElementById('sp-tts-indicator');
   const btn=document.getElementById('sp-tts-btn');
+  const pauseBtn=document.getElementById('sp-tts-pause-btn');
   if(ind)ind.classList.remove('show');
   if(btn)btn.classList.remove('active');
+  if(pauseBtn)pauseBtn.textContent='⏸';
+}
+
+function spTtsPause() {
+  if(!_spTtsActive&&!_spTtsPaused)return;
+  const pauseBtn=document.getElementById('sp-tts-pause-btn');
+  if(_spTtsPaused) {
+    // Resume
+    _spTtsPaused=false;
+    _spTtsActive=true;
+    if(pauseBtn)pauseBtn.textContent='⏸';
+    _spTtsSpeakIdx(_spTtsCurIdx);
+  } else {
+    // Pause
+    window.speechSynthesis.cancel();
+    _spTtsPaused=true;
+    _spTtsActive=false;
+    if(pauseBtn)pauseBtn.textContent='▶';
+  }
 }
 
 function _spTtsSplitSentences(text) {
@@ -4595,117 +4632,197 @@ function spEraseHighlight(){
 }
 
 // ── Text Formatting ────────────────────────
-function spFmtWrap(tag){
+// Toggle: if already wrapped in that tag, unwrap; else wrap
+function spFmtToggle(type) {
   if(!_spCurrentSel||!_spCurrentSel.range)return;
-  const{range,chId}=_spCurrentSel;
-  if(!range.toString().trim())return;
-  try{
-    const el=document.createElement(tag);
-    const frag=range.extractContents();
-    el.appendChild(frag);
-    range.insertNode(el);
+  const {range} = _spCurrentSel;
+  const text = range.toString().trim();
+  if(!text) return;
+
+  // Check if selection is already inside this tag
+  const anchor = range.commonAncestorContainer;
+  const parentEl = anchor.nodeType===3 ? anchor.parentElement : anchor;
+
+  const tagMap = {bold:'STRONG', italic:'EM'};
+  const styleMap = {underline:'underline', strikethrough:'line-through'};
+
+  if(tagMap[type]) {
+    const existingTag = parentEl.closest(tagMap[type]);
+    if(existingTag) {
+      // Unwrap
+      const parent = existingTag.parentNode;
+      while(existingTag.firstChild) parent.insertBefore(existingTag.firstChild, existingTag);
+      parent.removeChild(existingTag);
+      _spSaveData(); return;
+    }
+    try {
+      const el = document.createElement(tagMap[type]);
+      const frag = range.extractContents();
+      el.appendChild(frag);
+      range.insertNode(el);
+      window.getSelection()?.removeAllRanges();
+      _spSaveData();
+    } catch(e) { showToast('ফরম্যাট করা যাচ্ছে না'); }
+
+  } else if(styleMap[type]) {
+    // Check existing span with this style
+    const existingSpan = parentEl.closest(`[style*="${styleMap[type]}"]`);
+    if(existingSpan) {
+      const parent = existingSpan.parentNode;
+      while(existingSpan.firstChild) parent.insertBefore(existingSpan.firstChild, existingSpan);
+      parent.removeChild(existingSpan);
+      _spSaveData(); return;
+    }
+    try {
+      const span = document.createElement('span');
+      span.style.textDecoration = styleMap[type];
+      const frag = range.extractContents();
+      span.appendChild(frag);
+      range.insertNode(span);
+      window.getSelection()?.removeAllRanges();
+      _spSaveData();
+    } catch(e) {}
+  }
+}
+
+// Reset all formatting on selected text
+function spFmtReset() {
+  if(!_spCurrentSel||!_spCurrentSel.range)return;
+  const {range} = _spCurrentSel;
+  const text = range.toString().trim();
+  if(!text) return;
+  try {
+    const frag = range.extractContents();
+    // Strip all tags — just keep text nodes
+    const plain = document.createTextNode(frag.textContent);
+    range.insertNode(plain);
     window.getSelection()?.removeAllRanges();
     _spSaveData();
-  }catch(e){showToast('ফরম্যাট করা যাচ্ছে না');}
+    showToast('ফরম্যাট রিসেট হয়েছে');
+  } catch(e) {}
 }
-function spFmtApply(type){
+
+// Pixel font size: read current, adjust by delta
+function spFmtPxSize(delta) {
+  const inp = document.getElementById('sp-fmt-px');
+  let cur = parseInt(inp?.value||'16');
+  cur = Math.max(8, Math.min(72, cur + delta));
+  if(inp) inp.value = cur;
+  spFmtSetPx(cur);
+}
+function spFmtSetPx(px) {
   if(!_spCurrentSel||!_spCurrentSel.range)return;
-  const{range}=_spCurrentSel;
+  const {range} = _spCurrentSel;
   if(!range.toString().trim())return;
-  try{
-    const span=document.createElement('span');
-    if(type==='underline')span.style.textDecoration='underline';
-    if(type==='strikethrough')span.style.textDecoration='line-through';
-    const frag=range.extractContents();
+  try {
+    const span = document.createElement('span');
+    span.style.fontSize = parseInt(px) + 'px';
+    const frag = range.extractContents();
     span.appendChild(frag);
     range.insertNode(span);
     window.getSelection()?.removeAllRanges();
     _spSaveData();
-  }catch(e){}
+  } catch(e) {}
 }
-function spFmtFontSize(size){
-  if(!size||!_spCurrentSel||!_spCurrentSel.range)return;
-  const{range}=_spCurrentSel;
-  if(!range.toString().trim())return;
-  try{
-    const span=document.createElement('span');
-    span.style.fontSize=size;
-    const frag=range.extractContents();
-    span.appendChild(frag);
-    range.insertNode(span);
-    window.getSelection()?.removeAllRanges();
-    _spSaveData();
-  }catch(e){}
-}
-function spFmtColor(hex){
+
+// Text color — applies immediately on oninput
+function spFmtColor(hex) {
   if(!_spCurrentSel||!_spCurrentSel.range)return;
-  const{range}=_spCurrentSel;
+  const {range} = _spCurrentSel;
   if(!range.toString().trim())return;
-  try{
-    const span=document.createElement('span');
-    span.style.color=hex;
-    const frag=range.extractContents();
+  try {
+    const span = document.createElement('span');
+    span.style.color = hex;
+    const frag = range.extractContents();
     span.appendChild(frag);
     range.insertNode(span);
     window.getSelection()?.removeAllRanges();
+    // Restore selection ref so next operation still works
+    _spCurrentSel = null;
     _spSaveData();
-  }catch(e){}
+  } catch(e) {}
 }
-function spFmtFont(font){
+
+function spFmtFont(font) {
   if(!font||!_spCurrentSel||!_spCurrentSel.range)return;
-  const{range}=_spCurrentSel;
+  const {range} = _spCurrentSel;
   if(!range.toString().trim())return;
-  try{
-    const span=document.createElement('span');
-    span.style.fontFamily=font;
-    const frag=range.extractContents();
+  try {
+    const span = document.createElement('span');
+    span.style.fontFamily = font;
+    const frag = range.extractContents();
     span.appendChild(frag);
     range.insertNode(span);
     window.getSelection()?.removeAllRanges();
     _spSaveData();
-  }catch(e){}
+  } catch(e) {}
 }
 
-// ── Insert before/after ────────────────────
-function spInsertAt(pos,type){
+// ── Insert before/after selected text (not block) ──
+function spInsertAt(pos, type) {
   if(!_spCurrentSel||!_spCurrentSel.range)return;
-  const{range,chId}=_spCurrentSel;
+  const {range, chId} = _spCurrentSel;
   _spHideHlBar();
-  // Find the block-level ancestor of the selection
-  let node=range.startContainer;
-  while(node&&node.parentElement&&!['P','H1','H2','H3','H4','H5','H6','LI','BLOCKQUOTE','DIV'].includes(node.parentElement.tagName)){
-    node=node.parentElement;
-  }
-  const block=node.parentElement||node;
 
-  if(type==='blankline'){
-    const br=document.createElement('p');
-    br.innerHTML='&nbsp;';
-    br.style.cssText='min-height:1.8em;margin:0;';
-    if(pos==='before')block.parentNode.insertBefore(br,block);
-    else block.parentNode.insertBefore(br,block.nextSibling);
-    _spSaveData();
-    showToast('✅ ফাঁকা লাইন যোগ হয়েছে');
-  } else if(type==='text'){
-    const txt=prompt('যে টেক্সট যোগ করবেন:','');
-    if(!txt)return;
-    const p=document.createElement('p');
-    p.textContent=txt;
-    if(pos==='before')block.parentNode.insertBefore(p,block);
-    else block.parentNode.insertBefore(p,block.nextSibling);
-    _spSaveData();
-    showToast('✅ টেক্সট যোগ হয়েছে');
-  } else if(type==='image'){
-    const url=prompt('ছবির URL:','');
-    if(!url)return;
-    const fig=document.createElement('figure');
-    fig.innerHTML=`<img src="${url}" style="max-width:100%;border-radius:8px;display:block;margin:0 auto" onerror="this.style.display='none'">`;
-    if(pos==='before')block.parentNode.insertBefore(fig,block);
-    else block.parentNode.insertBefore(fig,block.nextSibling);
-    _spSaveData();
-    showToast('✅ ছবি যোগ হয়েছে');
+  if(type==='blankline') {
+    // Insert blank line exactly before/after the selection point (not block)
+    try {
+      const br = document.createElement('br');
+      const nbsp = document.createTextNode('\u00A0');  // non-breaking space
+      const blankRange = range.cloneRange();
+      if(pos==='before') {
+        blankRange.collapse(true);  // collapse to start
+        blankRange.insertNode(document.createTextNode('\n'));
+        blankRange.insertNode(document.createElement('br'));
+      } else {
+        blankRange.collapse(false); // collapse to end
+        blankRange.insertNode(document.createElement('br'));
+      }
+      _spSaveData();
+      showToast('✅ ফাঁকা লাইন যোগ হয়েছে');
+    } catch(e) {
+      // Fallback: insert <p> before the paragraph
+      let node = range.startContainer;
+      while(node && node.parentElement && !['P','H1','H2','H3','LI','DIV'].includes((node.parentElement||{}).tagName||'')) {
+        node = node.parentElement;
+      }
+      const block = node.nodeType===1 ? node : (node.parentElement||node);
+      const p = document.createElement('p');
+      p.innerHTML = '&nbsp;';
+      if(pos==='before') block.parentNode?.insertBefore(p, block);
+      else block.parentNode?.insertBefore(p, block.nextSibling);
+      _spSaveData();
+      showToast('✅ ফাঁকা লাইন যোগ হয়েছে');
+    }
+
+  } else if(type==='text') {
+    const txt = prompt('যে টেক্সট যোগ করবেন:','');
+    if(!txt) return;
+    try {
+      const span = document.createElement('span');
+      span.textContent = txt;
+      const insRange = range.cloneRange();
+      if(pos==='before') insRange.collapse(true);
+      else insRange.collapse(false);
+      insRange.insertNode(span);
+      _spSaveData();
+      showToast('✅ টেক্সট যোগ হয়েছে');
+    } catch(e) {}
+
+  } else if(type==='image') {
+    // Open image layout modal (reuse existing sp-img modal)
+    _spPendingImgPos = pos;
+    _spPendingImgRange = range.cloneRange();
+    spOpenImgModal();
   }
 }
+
+// Called when image modal inserts — we intercept via _spInsertImgAtRange
+let _spPendingImgPos = 'after';
+let _spPendingImgRange = null;
+
+// Override spInsertImg to handle inline insertion
+const _origSpInsertImg = typeof spInsertImg === 'function' ? spInsertImg : null;
 
 // Save rendered HTML back to node.content.text after in-place edits
 function _spSaveData(){
@@ -4716,8 +4833,7 @@ function _spSaveData(){
   // Serialize current rendered HTML back to a simple innerHTML
   if(!node.content)node.content={text:'',textUrl:'',pdfs:[],videos:[],qna:[]};
   // Store as-is HTML (we'll wrap it as a special marker)
-  node.content.text='<!-- sp-html-v1 -->
-'+viewer.innerHTML;
+  node.content.text='<!-- sp-html-v1 -->'+viewer.innerHTML;
   node.content.textUrl='';
   _spRenderedMdText=node.content.text;
   if(activeChapterId)_spFetchCache[activeChapterId]=node.content.text;
@@ -4961,6 +5077,51 @@ function spDrawClose(){
   const canvas=document.getElementById('sp-draw-canvas');
   if(canvas){canvas.onmousedown=canvas.onmousemove=canvas.onmouseup=canvas.onmouseleave=null;}
 }
+// ── Image delete button ─────────────────────
+function _spAddImgDeleteBtn(el) {
+  // Wrap in a relative container with a delete button
+  const wrap = document.createElement('span');
+  wrap.style.cssText = 'position:relative;display:inline-block;';
+  const delBtn = document.createElement('button');
+  delBtn.innerHTML = '✕';
+  delBtn.title = 'ছবি মুছুন';
+  delBtn.style.cssText = 'position:absolute;top:-6px;right:-6px;z-index:10;width:18px;height:18px;border-radius:50%;background:#ef4444;color:#fff;border:none;cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;';
+  delBtn.onclick = (e) => {
+    e.stopPropagation();
+    if(confirm('ছবিটি মুছে ফেলবেন?')) {
+      wrap.parentNode?.removeChild(wrap);
+      _spSaveData();
+      showToast('ছবি মুছে ফেলা হয়েছে');
+    }
+  };
+  const parent = el.parentNode;
+  parent.insertBefore(wrap, el);
+  wrap.appendChild(el);
+  wrap.appendChild(delBtn);
+}
+
+// Make existing images in render area deletable on click
+function _spMakeImgsDeleteable(viewer) {
+  if(!viewer) return;
+  viewer.querySelectorAll('img').forEach(img => {
+    if(img._spDelSetup) return;
+    img._spDelSetup = true;
+    img.style.cursor = 'pointer';
+    img.title = img.title || 'ছবির উপরে ডাবল-ক্লিক করুন মুছতে';
+    img.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      if(confirm('ছবিটি মুছে ফেলবেন?')) {
+        // Remove parent figure/div if it only has the image
+        const parent = img.closest('figure,div.float-right,div.float-left') || img.parentElement;
+        if(parent && parent !== viewer) parent.parentNode?.removeChild(parent);
+        else img.parentNode?.removeChild(img);
+        _spSaveData();
+        showToast('ছবি মুছে ফেলা হয়েছে');
+      }
+    });
+  });
+}
+
 // Update pen size from slider
 document.addEventListener('input',e=>{
   if(e.target.id==='sp-draw-size')_spDrawSize=parseInt(e.target.value);
