@@ -911,8 +911,8 @@
   .sp-ins-btn:hover{background:var(--accent-subtle);color:var(--accent-light);border-color:var(--accent)}
 
   /* ── Drawing canvas overlay ── */
-  #sp-draw-overlay{display:none;position:fixed;inset:0;z-index:700;background:transparent;overflow:auto;touch-action:none}
-  #sp-draw-scroll-layer{position:relative;width:100%;min-height:100%;}
+  #sp-draw-overlay{display:none;position:fixed;inset:0;z-index:700;background:transparent;overflow-y:scroll;overflow-x:hidden;touch-action:pan-y;}
+  #sp-draw-canvas{position:absolute;top:0;left:0;pointer-events:auto;cursor:crosshair;touch-action:none;}
   #sp-draw-overlay.show{display:block}
   #sp-draw-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto;cursor:crosshair}
   #sp-draw-toolbar{
@@ -3975,8 +3975,12 @@ function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, c
       h.id = 'sp-heading-' + i;
       h.style.scrollMarginTop = '70px';
     });
-    _spReapplyHighlights(viewer, chId);
-    viewer._spSelSetup=false;
+    // Only reapply highlights from localStorage when NOT sp-html-v1
+    // (sp-html-v1 already has spans embedded in the HTML)
+    if(!text.startsWith('<!-- sp-html-v1 -->')) {
+      _spReapplyHighlights(viewer, chId);
+    }
+    viewer._spSelSetup = false;
     _spSetupSelection(viewer, chId);
     _spMakeImgsDeleteable(viewer);
   }
@@ -4119,15 +4123,25 @@ function _spSplitBlock(block, pages, curHTML, curH, pageH) {
 function _spPaginate(html, pageH) {
   const tmp=document.createElement('div'); tmp.innerHTML=html;
 
-  // Flatten: if top-level wrapper divs contain only block children, unwrap them
+  // Flatten: unwrap wrapper divs that contain only block-level children (no direct text)
   function flattenBlocks(parent) {
     const result = [];
     for(const child of Array.from(parent.children)) {
       const tag = (child.tagName||'').toLowerCase();
-      // Unwrap generic divs and sections that are just containers
-      if((tag === 'div' || tag === 'section') && child.children.length > 0 &&
-         !child.dataset.hlId && !child.classList.contains('float-right') &&
-         !child.classList.contains('float-left') && !child.classList.contains('grid')) {
+      const BLOCK_TAGS = new Set(['p','h1','h2','h3','h4','h5','h6','ul','ol','li',
+        'blockquote','pre','table','figure','div','section','hr']);
+      // Only unwrap if: div/section, has block children, no direct text, no special class
+      const hasDirectText = Array.from(child.childNodes).some(n =>
+        n.nodeType === 3 && n.textContent.trim().length > 0);
+      const allBlockChildren = child.children.length > 0 &&
+        Array.from(child.children).every(ch => BLOCK_TAGS.has((ch.tagName||'').toLowerCase()));
+      const isContainer = (tag === 'div' || tag === 'section') &&
+        !hasDirectText && allBlockChildren &&
+        !child.dataset.hlId && !child.dataset.hlGroup &&
+        !child.classList.contains('float-right') &&
+        !child.classList.contains('float-left') &&
+        !child.classList.contains('grid');
+      if(isContainer) {
         result.push(...flattenBlocks(child));
       } else {
         result.push(child);
@@ -4641,9 +4655,19 @@ function _spSetupSelection(container, chId) {
   container.addEventListener('click', e => {
     if(window.getSelection().toString().trim()) return;
     const hlSpan = e.target.closest('[data-hl-id]');
-    if(hlSpan) { e.stopPropagation(); _spShowHlOptions(hlSpan, chId); return; }
+    if(hlSpan) {
+      e.stopPropagation();
+      // Set currentSel to span content so format ops work on it
+      const range = document.createRange();
+      range.selectNodeContents(hlSpan);
+      _spCurrentSel = { range: range.cloneRange(), chId, container };
+      _spShowHlOptions(hlSpan, chId);
+      // Also show the format bar
+      _spShowHlBarAtEl(hlSpan);
+      return;
+    }
     // Click on styled span (bold/italic/color etc.) → restore selection + show bar
-    const styled = e.target.closest('strong,em,span[style],u,s');
+    const styled = e.target.closest('strong,em,span[style],u,s,b,i');
     if(styled) {
       e.stopPropagation();
       const range = document.createRange();
@@ -4693,10 +4717,11 @@ function spApplyHighlight(color, customHex) {
   const text = range.toString().trim();
   if(!text) { showToast('টেক্সট সিলেক্ট করুন'); return; }
 
-  // Walk all text nodes in range and wrap each separately
+  // Use ONE group ID for all text nodes in this selection
+  const groupId = 'hl_' + Date.now();
+
   _spWrapRangeNodes(range, node => {
     const span = document.createElement('span');
-    const hlId = 'hl_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
     if(color === 'custom' && customHex) {
       span.className = 'sp-hl-custom';
       span.style.background = _spHexToRgba(customHex, 0.35);
@@ -4704,16 +4729,19 @@ function spApplyHighlight(color, customHex) {
     } else {
       span.className = 'sp-hl-' + color;
     }
-    span.dataset.hlId   = hlId;
-    span.dataset.color  = color;
-    span.dataset.hlText = node.textContent;
+    span.dataset.hlId    = groupId;   // same ID for all spans in group
+    span.dataset.hlGroup = groupId;
+    span.dataset.color   = color;
+    span.dataset.hlText  = node.textContent;
     return span;
   });
 
   window.getSelection()?.removeAllRanges();
-  _spSaveHighlight(chId, 'hl_' + Date.now(), text, color, customHex || '', '');
+  // Save to localStorage with groupId
+  _spSaveHighlight(chId, groupId, text, color, customHex || '', '');
   _spLogEdit('হাইলাইট', text.substring(0,30) + (text.length>30?'…':''));
-  _spSaveData();
+  // Save DOM directly (don't use _spSaveData which overwrites viewer innerHTML)
+  _spSaveDOMToNode();
   _spHideHlBar();
   _spCurrentSel = null;
   showToast('✅ হাইলাইট হয়েছে');
@@ -4752,15 +4780,20 @@ function spEraseHighlight() {
   if(!_spCurrentSel || !_spCurrentSel.range) return;
   const { range, chId } = _spCurrentSel;
   const container = range.commonAncestorContainer;
-  const node = (container.nodeType === 3 ? container.parentElement : container).closest('[data-hl-id]');
-  if(node) {
-    const hlId = node.dataset.hlId;
-    const parent = node.parentNode;
-    while(node.firstChild) parent.insertBefore(node.firstChild, node);
-    parent.removeChild(node);
-    _spRemoveHighlight(chId, hlId);
-    _spLogEdit('হাইলাইট মুছুন', node.dataset.hlText || '');
-    _spSaveData();
+  const hitSpan = (container.nodeType === 3 ? container.parentElement : container).closest('[data-hl-id]');
+  if(hitSpan) {
+    const groupId = hitSpan.dataset.hlId;
+    // Remove ALL spans with same groupId from the entire viewer
+    const viewer = document.getElementById('sp-render-markdown');
+    const targets = (viewer || document).querySelectorAll(`[data-hl-id="${groupId}"]`);
+    targets.forEach(sp => {
+      const p = sp.parentNode;
+      while(sp.firstChild) p.insertBefore(sp.firstChild, sp);
+      p.removeChild(sp);
+    });
+    _spRemoveHighlight(chId, groupId);
+    _spLogEdit('হাইলাইট মুছুন', hitSpan.dataset.hlText || '');
+    _spSaveDOMToNode();
     _spHideHlBar(); _spCurrentSel = null;
     showToast('হাইলাইট মুছে ফেলা হয়েছে');
   } else { _spHideHlBar(); _spCurrentSel = null; showToast('এখানে হাইলাইট নেই'); }
@@ -4937,8 +4970,8 @@ function spFmtSetPx(px) {
   window.getSelection()?.removeAllRanges();
   _spLogEdit('ফন্ট সাইজ', px + 'px');
   _spSaveData();
-  // Refresh range ref so next +/- click works
-  _spCurrentSel = null;
+  // After font size change, re-select the span we just created
+  // so repeated +/- clicks keep working
 }
 
 // Color — apply immediately, keep sel ref after
@@ -4955,7 +4988,6 @@ function spFmtColorLive(hex) {
   window.getSelection()?.removeAllRanges();
   _spLogEdit('টেক্সট রঙ', hex);
   _spSaveData();
-  _spCurrentSel = null;
 }
 function spFmtColor(val) {
   if(!_spCurrentSel || !_spCurrentSel.range) return;
@@ -4968,7 +5000,6 @@ function spFmtColor(val) {
   });
   window.getSelection()?.removeAllRanges();
   _spSaveData();
-  _spCurrentSel = null;
 }
 
 function spFmtFont(font) {
@@ -4983,7 +5014,6 @@ function spFmtFont(font) {
   window.getSelection()?.removeAllRanges();
   _spLogEdit('ফন্ট', font);
   _spSaveData();
-  _spCurrentSel = null;
 }
 
 // ── Insert before/after ────────────────────
@@ -5015,14 +5045,19 @@ function spInsertAt(pos, type) {
   _spCurrentSel = null;
 }
 
-// Save rendered HTML back to node
+// Save rendered HTML back to node (full save including inline edits)
 function _spSaveData() {
+  _spSaveDOMToNode();
+}
+// Core save — no side effects (does not trigger re-render)
+function _spSaveDOMToNode() {
   const node = activeChapterId && currentSubject ? findNode(currentSubject.chapters, activeChapterId) : null;
   if(!node) return;
   const viewer = document.getElementById('sp-render-markdown');
   if(!viewer) return;
   if(!node.content) node.content = { text:'', textUrl:'', pdfs:[], videos:[], qna:[] };
-  node.content.text    = '<!-- sp-html-v1 -->' + viewer.innerHTML;
+  const html = viewer.innerHTML;
+  node.content.text    = '<!-- sp-html-v1 -->' + html;
   node.content.textUrl = '';
   _spRenderedMdText    = node.content.text;
   if(activeChapterId) _spFetchCache[activeChapterId] = node.content.text;
@@ -5149,19 +5184,23 @@ function spOpenDrawing() {
   const toolbar  = document.getElementById('sp-draw-toolbar');
   if(!overlay || !canvas || !toolbar) return;
 
-  // Size canvas to full document height (scrollable)
-  const docH = Math.max(document.body.scrollHeight, window.innerHeight);
-  canvas.width  = window.innerWidth;
-  canvas.height = docH;
-  canvas.style.position = 'absolute';
-  canvas.style.top      = '0';
-  canvas.style.left     = '0';
-  canvas.style.width    = window.innerWidth + 'px';
-  canvas.style.height   = docH + 'px';
+  // Canvas = full page height (3x viewport for plenty of space)
+  const W = window.innerWidth;
+  const H = Math.max(document.body.scrollHeight, window.innerHeight * 3);
+  canvas.width  = W;
+  canvas.height = H;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  // Overlay content size = canvas size (makes overlay scrollable)
+  overlay.style.width  = W + 'px';
 
   _spDrawCtx = canvas.getContext('2d');
   _spDrawCtx.lineCap  = 'round';
   _spDrawCtx.lineJoin = 'round';
+
+  // Sync overlay scroll with page scroll
+  const contentEl = document.getElementById('sp-content-body');
+  if(contentEl) overlay.scrollTop = contentEl.scrollTop;
 
   // Load saved drawing
   if(activeChapterId) {
@@ -5177,16 +5216,53 @@ function spOpenDrawing() {
   toolbar.style.display = 'flex';
   _spInitDrawToolbarDrag();
 
-  // Mouse — use pageX/pageY for scroll-aware coordinates
-  canvas.onmousedown = e => { _spDrawing = true; _spDrawStart(e.pageX, e.pageY); };
-  canvas.onmousemove = e => { if(_spDrawing) _spDrawMove(e.pageX, e.pageY); };
-  canvas.onmouseup   = canvas.onmouseleave = () => { if(_spDrawing) { _spDrawing = false; _spDrawSaveHistory(); } };
-  // Touch
-  canvas.ontouchstart = e => { e.preventDefault(); _spDrawing = true; const t = e.touches[0]; _spDrawStart(t.pageX, t.pageY); };
-  canvas.ontouchmove  = e => { e.preventDefault(); if(_spDrawing) { const t = e.touches[0]; _spDrawMove(t.pageX, t.pageY); } };
-  canvas.ontouchend   = () => { if(_spDrawing) { _spDrawing = false; _spDrawSaveHistory(); } };
+  // Use offsetX/offsetY relative to canvas (scroll-safe)
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) * (canvas.width  / rect.width),
+      y: (e.clientY - rect.top)  * (canvas.height / rect.height) + overlay.scrollTop,
+    };
+  }
 
-  showToast('✏ Drawing মোড — স্ক্রোল করে যেকোনো জায়গায় আঁকুন');
+  canvas.onmousedown = e => {
+    _spDrawing = true;
+    const p = getPos(e);
+    _spDrawStart(p.x, p.y);
+  };
+  canvas.onmousemove = e => {
+    if(_spDrawing) {
+      const p = getPos(e);
+      _spDrawMove(p.x, p.y);
+    }
+  };
+  canvas.onmouseup = canvas.onmouseleave = () => {
+    if(_spDrawing) { _spDrawing = false; _spDrawSaveHistory(); }
+  };
+  // Touch
+  canvas.ontouchstart = e => {
+    // Allow single-finger draw, two-finger scroll
+    if(e.touches.length > 1) return;
+    e.preventDefault();
+    _spDrawing = true;
+    const t = e.touches[0];
+    const p = getPos(t);
+    _spDrawStart(p.x, p.y);
+  };
+  canvas.ontouchmove = e => {
+    if(e.touches.length > 1) return; // two-finger scroll
+    if(_spDrawing) {
+      e.preventDefault();
+      const t = e.touches[0];
+      const p = getPos(t);
+      _spDrawMove(p.x, p.y);
+    }
+  };
+  canvas.ontouchend = () => {
+    if(_spDrawing) { _spDrawing = false; _spDrawSaveHistory(); }
+  };
+
+  showToast('✏ Drawing মোড চালু — স্ক্রোল করে নিচে আঁকুন');
 }
 
 function _spDrawStart(x, y) {
