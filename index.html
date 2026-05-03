@@ -914,7 +914,6 @@
   #sp-draw-overlay{display:none;position:fixed;inset:0;z-index:700;background:transparent;overflow-y:scroll;overflow-x:hidden;touch-action:pan-y;}
   #sp-draw-canvas{position:absolute;top:0;left:0;pointer-events:auto;cursor:crosshair;touch-action:none;}
   #sp-draw-overlay.show{display:block}
-  #sp-draw-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto;cursor:crosshair}
   #sp-draw-toolbar{
     position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
     background:var(--bg2);border:1px solid var(--border2);border-radius:16px;
@@ -3862,6 +3861,7 @@ let spImgLayout         = 'float';
 let spSplitModeActive   = localStorage.getItem('sp_splitMode') === 'true';
 let spMiniTocVisible    = false;
 let _spCurrentSel       = null;
+let _spLastClickedHlSpan = null; // Track last clicked highlight span for group erase
 
 // Stores fetched text keyed by chapterId (cache for session)
 let _spFetchCache = {};
@@ -3909,6 +3909,7 @@ function spRenderTextTab() {
   spBookModeActive = false; spBookPages = [];
   if (wrapper) wrapper.classList.remove('active');
   if (viewer) viewer.innerHTML = '';
+  if (emptyEl) emptyEl.style.display = 'none'; // Always hide empty state immediately on chapter switch
   _spTtsStop();
   spSplitModeActive = localStorage.getItem('sp_splitMode') === 'true';
   _spUpdateSplitBadge();
@@ -4151,7 +4152,7 @@ function _spPaginate(html, pageH) {
   }
 
   const blocks=flattenBlocks(tmp), pages=[]; let curHTML='',curH=0;
-  const SPLIT=new Set(['p','h1','h2','h3','h4','h5','h6','li','blockquote','dt','dd','span','strong','em','br']);
+  const SPLIT=new Set(['p','h1','h2','h3','h4','h5','h6','li','blockquote','dt','dd','br']);
   const flush=()=>{ if(curHTML.trim())pages.push(curHTML); curHTML=''; curH=0; };
   for(const b of blocks){
     const outer=b.outerHTML, testH=_spProbeH(curHTML+outer);
@@ -4661,6 +4662,7 @@ function _spSetupSelection(container, chId) {
       const range = document.createRange();
       range.selectNodeContents(hlSpan);
       _spCurrentSel = { range: range.cloneRange(), chId, container };
+      _spLastClickedHlSpan = hlSpan; // Track for group erase
       _spShowHlOptions(hlSpan, chId);
       // Also show the format bar
       _spShowHlBarAtEl(hlSpan);
@@ -4696,15 +4698,19 @@ function _spShowHlBarAtEl(el) {
 function _spHideHlBar() {
   const bar = document.getElementById('sp-hl-bar');
   if(bar) bar.classList.remove('show');
+  _spLastClickedHlSpan = null;
   // Don't null _spCurrentSel here — operations need it
 }
 // Hide bar + clear sel on outside click
+// Use setTimeout to let click handlers run first before hiding
 document.addEventListener('mousedown', e => {
   const bar  = document.getElementById('sp-hl-bar');
   const opts = document.getElementById('sp-hl-options');
   const note = document.getElementById('sp-note-popup');
   const tedt = document.getElementById('sp-text-edit-popup');
-  if(bar  && bar.classList.contains('show')  && !bar.contains(e.target))  { _spHideHlBar(); _spCurrentSel = null; }
+  // Check if click is on a highlight span or styled span - don't hide immediately
+  const isOnHighlight = e.target.closest('[data-hl-id]') || e.target.closest('strong,em,span[style],u,s,b,i');
+  if(bar  && bar.classList.contains('show')  && !bar.contains(e.target) && !isOnHighlight)  { _spHideHlBar(); _spCurrentSel = null; }
   if(opts && opts.style.display !== 'none'   && !opts.contains(e.target) && !e.target.closest('[data-hl-id]')) _spHideHlOptions();
   if(note && note.classList.contains('show') && !note.contains(e.target)) spHideNotePopup();
   if(tedt && tedt.classList.contains('show') && !tedt.contains(e.target)) spHideTextEditPopup();
@@ -4777,26 +4783,30 @@ function _spHexToRgba(hex, a) {
 }
 
 function spEraseHighlight() {
-  if(!_spCurrentSel || !_spCurrentSel.range) return;
-  const { range, chId } = _spCurrentSel;
-  const container = range.commonAncestorContainer;
-  const hitSpan = (container.nodeType === 3 ? container.parentElement : container).closest('[data-hl-id]');
-  if(hitSpan) {
-    const groupId = hitSpan.dataset.hlId;
-    // Remove ALL spans with same groupId from the entire viewer
-    const viewer = document.getElementById('sp-render-markdown');
-    const targets = (viewer || document).querySelectorAll(`[data-hl-id="${groupId}"]`);
-    targets.forEach(sp => {
-      const p = sp.parentNode;
-      while(sp.firstChild) p.insertBefore(sp.firstChild, sp);
-      p.removeChild(sp);
-    });
-    _spRemoveHighlight(chId, groupId);
-    _spLogEdit('হাইলাইট মুছুন', hitSpan.dataset.hlText || '');
-    _spSaveDOMToNode();
-    _spHideHlBar(); _spCurrentSel = null;
-    showToast('হাইলাইট মুছে ফেলা হয়েছে');
-  } else { _spHideHlBar(); _spCurrentSel = null; showToast('এখানে হাইলাইট নেই'); }
+  // Priority: use last clicked hl span (most reliable for group erase)
+  let hitSpan = _spLastClickedHlSpan;
+  // Fallback: try to find from current selection
+  if(!hitSpan && _spCurrentSel && _spCurrentSel.range) {
+    const { range } = _spCurrentSel;
+    const container = range.commonAncestorContainer;
+    hitSpan = (container.nodeType === 3 ? container.parentElement : container).closest('[data-hl-id]');
+  }
+  if(!hitSpan) { _spHideHlBar(); _spCurrentSel = null; _spLastClickedHlSpan = null; showToast('এখানে হাইলাইট নেই'); return; }
+  const chId = _spCurrentSel ? _spCurrentSel.chId : (activeChapterId || '');
+  const groupId = hitSpan.dataset.hlId;
+  // Remove ALL spans with same groupId from the entire viewer
+  const viewer = document.getElementById('sp-render-markdown');
+  const targets = (viewer || document).querySelectorAll(`[data-hl-id="${groupId}"]`);
+  targets.forEach(sp => {
+    const p = sp.parentNode;
+    while(sp.firstChild) p.insertBefore(sp.firstChild, sp);
+    p.removeChild(sp);
+  });
+  _spRemoveHighlight(chId, groupId);
+  _spLogEdit('হাইলাইট মুছুন', hitSpan.dataset.hlText || '');
+  _spSaveDOMToNode();
+  _spHideHlBar(); _spCurrentSel = null; _spLastClickedHlSpan = null;
+  showToast('হাইলাইট মুছে ফেলা হয়েছে');
 }
 
 // ── Note popup (toolbar button) ────────────
@@ -5184,21 +5194,22 @@ function spOpenDrawing() {
   const toolbar  = document.getElementById('sp-draw-toolbar');
   if(!overlay || !canvas || !toolbar) return;
 
-  // Canvas = full page height (3x viewport for plenty of space)
+  // Canvas = very tall for infinite-like drawing (can extend dynamically)
   const W = window.innerWidth;
-  const H = Math.max(document.body.scrollHeight, window.innerHeight * 3);
+  const INITIAL_H = Math.max(window.innerHeight * 10, 8000); // Start with 10x viewport
   canvas.width  = W;
-  canvas.height = H;
+  canvas.height = INITIAL_H;
   canvas.style.width  = W + 'px';
-  canvas.style.height = H + 'px';
-  // Overlay content size = canvas size (makes overlay scrollable)
+  canvas.style.height = INITIAL_H + 'px';
+  // Overlay scrollable container
   overlay.style.width  = W + 'px';
+  overlay.style.height = '100vh'; // Viewport height, canvas scrolls inside
 
   _spDrawCtx = canvas.getContext('2d');
   _spDrawCtx.lineCap  = 'round';
   _spDrawCtx.lineJoin = 'round';
 
-  // Sync overlay scroll with page scroll
+  // Sync overlay scroll with page scroll on open
   const contentEl = document.getElementById('sp-content-body');
   if(contentEl) overlay.scrollTop = contentEl.scrollTop;
 
@@ -5216,12 +5227,32 @@ function spOpenDrawing() {
   toolbar.style.display = 'flex';
   _spInitDrawToolbarDrag();
 
-  // Use offsetX/offsetY relative to canvas (scroll-safe)
+  // Extend canvas when approaching bottom
+  function _spExtendCanvasIfNeeded() {
+    if(overlay.scrollTop + overlay.clientHeight > canvas.height - 300) {
+      const oldH = canvas.height;
+      const newH = oldH + window.innerHeight * 5;
+      // Save current drawing
+      const imgData = _spDrawCtx.getImageData(0, 0, canvas.width, oldH);
+      canvas.height = newH;
+      canvas.style.height = newH + 'px';
+      // Restore drawing + reapply context settings
+      _spDrawCtx.putImageData(imgData, 0, 0);
+      _spDrawCtx.lineCap  = 'round';
+      _spDrawCtx.lineJoin = 'round';
+      _spApplyDrawStyle();
+    }
+  }
+  overlay.addEventListener('scroll', _spExtendCanvasIfNeeded, { passive: true });
+
+  // Correct coordinate calculation: clientY - overlay's visible top + scrollTop
   function getPos(e) {
-    const rect = canvas.getBoundingClientRect();
+    const rect = overlay.getBoundingClientRect();
+    const scaleX = canvas.width / canvas.offsetWidth;
+    const scaleY = canvas.height / canvas.offsetHeight;
     return {
-      x: (e.clientX - rect.left) * (canvas.width  / rect.width),
-      y: (e.clientY - rect.top)  * (canvas.height / rect.height) + overlay.scrollTop,
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top + overlay.scrollTop) * scaleY,
     };
   }
 
