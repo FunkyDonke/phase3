@@ -3861,7 +3861,6 @@ let spImgLayout         = 'float';
 let spSplitModeActive   = localStorage.getItem('sp_splitMode') === 'true';
 let spMiniTocVisible    = false;
 let _spCurrentSel       = null;
-let _spLastClickedHlSpan = null; // Track last clicked highlight span for group erase
 
 // Stores fetched text keyed by chapterId (cache for session)
 let _spFetchCache = {};
@@ -4124,34 +4123,25 @@ function _spSplitBlock(block, pages, curHTML, curH, pageH) {
 function _spPaginate(html, pageH) {
   const tmp=document.createElement('div'); tmp.innerHTML=html;
 
-  // Flatten: unwrap wrapper divs that contain only block-level children (no direct text)
-  function flattenBlocks(parent) {
-    const result = [];
-    for(const child of Array.from(parent.children)) {
-      const tag = (child.tagName||'').toLowerCase();
-      const BLOCK_TAGS = new Set(['p','h1','h2','h3','h4','h5','h6','ul','ol','li',
-        'blockquote','pre','table','figure','div','section','hr']);
-      // Only unwrap if: div/section, has block children, no direct text, no special class
-      const hasDirectText = Array.from(child.childNodes).some(n =>
-        n.nodeType === 3 && n.textContent.trim().length > 0);
-      const allBlockChildren = child.children.length > 0 &&
-        Array.from(child.children).every(ch => BLOCK_TAGS.has((ch.tagName||'').toLowerCase()));
-      const isContainer = (tag === 'div' || tag === 'section') &&
-        !hasDirectText && allBlockChildren &&
-        !child.dataset.hlId && !child.dataset.hlGroup &&
-        !child.classList.contains('float-right') &&
-        !child.classList.contains('float-left') &&
-        !child.classList.contains('grid');
-      if(isContainer) {
-        result.push(...flattenBlocks(child));
-      } else {
-        result.push(child);
-      }
+  // Get top-level blocks; if direct children are only wrapper divs (e.g. from markdown),
+  // unwrap one level so paragraphs become top-level. Preserve highlight/style spans inside.
+  function getBlocks(parent) {
+    const children = Array.from(parent.children);
+    if(children.length === 0) return [];
+    // If all children are divs with no special class/data AND they contain block elements, unwrap
+    const allArePlainDivs = children.every(ch => {
+      const tag = (ch.tagName||'').toLowerCase();
+      return tag === 'div' && !ch.dataset.hlId && !ch.dataset.hlGroup &&
+        !ch.classList.contains('float-right') && !ch.classList.contains('float-left') &&
+        !ch.classList.contains('grid') && !ch.getAttribute('style')?.includes('text-align:center');
+    });
+    if(allArePlainDivs && children.length === 1) {
+      return Array.from(children[0].children);
     }
-    return result;
+    return children;
   }
 
-  const blocks=flattenBlocks(tmp), pages=[]; let curHTML='',curH=0;
+  const blocks=getBlocks(tmp), pages=[]; let curHTML='',curH=0;
   const SPLIT=new Set(['p','h1','h2','h3','h4','h5','h6','li','blockquote','dt','dd','br']);
   const flush=()=>{ if(curHTML.trim())pages.push(curHTML); curHTML=''; curH=0; };
   for(const b of blocks){
@@ -4623,23 +4613,15 @@ function spClearEditHistory() {
 }
 
 // ── Setup selection listeners ──────────────
+// ── Global highlight state ─────────────────
+let _spLastHlGroupId = null; // last clicked/applied highlight group id for erase
+
 function _spSetupSelection(container, chId) {
   if(!container || container._spSelSetup) return;
   container._spSelSetup = true;
 
-  container.addEventListener('mouseup', () => {
-    setTimeout(() => {
-      const sel = window.getSelection();
-      if(!sel || sel.isCollapsed || !sel.toString().trim()) { _spHideHlBar(); return; }
-      try {
-        const range = sel.getRangeAt(0);
-        if(!container.contains(range.commonAncestorContainer)) { _spHideHlBar(); return; }
-        _spCurrentSel = { range: range.cloneRange(), chId, container };
-        _spShowHlBar(range);
-      } catch(e) { _spHideHlBar(); }
-    }, 10);
-  });
-  container.addEventListener('touchend', () => {
+  // Show bar after text selection (mouseup/touchend)
+  const onSelectionEnd = (delayMs) => {
     setTimeout(() => {
       const sel = window.getSelection();
       if(!sel || sel.isCollapsed || !sel.toString().trim()) return;
@@ -4647,35 +4629,39 @@ function _spSetupSelection(container, chId) {
         const range = sel.getRangeAt(0);
         if(!container.contains(range.commonAncestorContainer)) return;
         _spCurrentSel = { range: range.cloneRange(), chId, container };
+        _spLastHlGroupId = null; // new text selection resets last hl group
         _spShowHlBar(range);
       } catch(e) {}
-    }, 160);
-  });
+    }, delayMs);
+  };
 
-  // Click on styled/highlighted element → reopen popup
-  container.addEventListener('click', e => {
-    if(window.getSelection().toString().trim()) return;
+  container.addEventListener('mouseup', () => onSelectionEnd(10));
+  container.addEventListener('touchend', () => onSelectionEnd(160));
+
+  // Click on highlighted/styled span: use mousedown + stopPropagation to beat document handler
+  container.addEventListener('mousedown', e => {
     const hlSpan = e.target.closest('[data-hl-id]');
+    const styled = !hlSpan && e.target.closest('strong,em,span[style],u,s,b,i');
+    if(!hlSpan && !styled) return;
+
+    e.stopPropagation(); // stop document mousedown from hiding bar
+
     if(hlSpan) {
-      e.stopPropagation();
-      // Set currentSel to span content so format ops work on it
       const range = document.createRange();
       range.selectNodeContents(hlSpan);
       _spCurrentSel = { range: range.cloneRange(), chId, container };
-      _spLastClickedHlSpan = hlSpan; // Track for group erase
-      _spShowHlOptions(hlSpan, chId);
-      // Also show the format bar
-      _spShowHlBarAtEl(hlSpan);
-      return;
-    }
-    // Click on styled span (bold/italic/color etc.) → restore selection + show bar
-    const styled = e.target.closest('strong,em,span[style],u,s,b,i');
-    if(styled) {
-      e.stopPropagation();
+      _spLastHlGroupId = hlSpan.dataset.hlId;
+      // Show after paint so any selection clear doesn't interfere
+      requestAnimationFrame(() => {
+        _spShowHlOptions(hlSpan, chId);
+        _spShowHlBarAtEl(hlSpan);
+      });
+    } else if(styled) {
       const range = document.createRange();
       range.selectNodeContents(styled);
       _spCurrentSel = { range: range.cloneRange(), chId, container };
-      _spShowHlBarAtEl(styled);
+      _spLastHlGroupId = null;
+      requestAnimationFrame(() => _spShowHlBarAtEl(styled));
     }
   });
 }
@@ -4698,19 +4684,14 @@ function _spShowHlBarAtEl(el) {
 function _spHideHlBar() {
   const bar = document.getElementById('sp-hl-bar');
   if(bar) bar.classList.remove('show');
-  _spLastClickedHlSpan = null;
-  // Don't null _spCurrentSel here — operations need it
 }
-// Hide bar + clear sel on outside click
-// Use setTimeout to let click handlers run first before hiding
+// Hide bar on outside click — stopPropagation from span mousedown prevents this for span clicks
 document.addEventListener('mousedown', e => {
   const bar  = document.getElementById('sp-hl-bar');
   const opts = document.getElementById('sp-hl-options');
   const note = document.getElementById('sp-note-popup');
   const tedt = document.getElementById('sp-text-edit-popup');
-  // Check if click is on a highlight span or styled span - don't hide immediately
-  const isOnHighlight = e.target.closest('[data-hl-id]') || e.target.closest('strong,em,span[style],u,s,b,i');
-  if(bar  && bar.classList.contains('show')  && !bar.contains(e.target) && !isOnHighlight)  { _spHideHlBar(); _spCurrentSel = null; }
+  if(bar  && bar.classList.contains('show')  && !bar.contains(e.target)) { _spHideHlBar(); _spCurrentSel = null; _spLastHlGroupId = null; }
   if(opts && opts.style.display !== 'none'   && !opts.contains(e.target) && !e.target.closest('[data-hl-id]')) _spHideHlOptions();
   if(note && note.classList.contains('show') && !note.contains(e.target)) spHideNotePopup();
   if(tedt && tedt.classList.contains('show') && !tedt.contains(e.target)) spHideTextEditPopup();
@@ -4748,6 +4729,8 @@ function spApplyHighlight(color, customHex) {
   _spLogEdit('হাইলাইট', text.substring(0,30) + (text.length>30?'…':''));
   // Save DOM directly (don't use _spSaveData which overwrites viewer innerHTML)
   _spSaveDOMToNode();
+  // Track last applied group so erase button works immediately after applying
+  _spLastHlGroupId = groupId;
   _spHideHlBar();
   _spCurrentSel = null;
   showToast('✅ হাইলাইট হয়েছে');
@@ -4783,30 +4766,34 @@ function _spHexToRgba(hex, a) {
 }
 
 function spEraseHighlight() {
-  // Priority: use last clicked hl span (most reliable for group erase)
-  let hitSpan = _spLastClickedHlSpan;
-  // Fallback: try to find from current selection
-  if(!hitSpan && _spCurrentSel && _spCurrentSel.range) {
-    const { range } = _spCurrentSel;
+  // Priority 1: use last clicked hl group id (most reliable for multi-para group erase)
+  let groupId = _spLastHlGroupId;
+  let chId = _spCurrentSel ? _spCurrentSel.chId : (activeChapterId || '');
+
+  // Priority 2: try to find from current selection range
+  if(!groupId && _spCurrentSel && _spCurrentSel.range) {
+    const range = _spCurrentSel.range;
     const container = range.commonAncestorContainer;
-    hitSpan = (container.nodeType === 3 ? container.parentElement : container).closest('[data-hl-id]');
+    const hitSpan = (container.nodeType === 3 ? container.parentElement : container).closest('[data-hl-id]');
+    if(hitSpan) { groupId = hitSpan.dataset.hlId; chId = _spCurrentSel.chId; }
   }
-  if(!hitSpan) { _spHideHlBar(); _spCurrentSel = null; _spLastClickedHlSpan = null; showToast('এখানে হাইলাইট নেই'); return; }
-  const chId = _spCurrentSel ? _spCurrentSel.chId : (activeChapterId || '');
-  const groupId = hitSpan.dataset.hlId;
-  // Remove ALL spans with same groupId from the entire viewer
+
+  if(!groupId) { _spHideHlBar(); _spCurrentSel = null; _spLastHlGroupId = null; showToast('এখানে হাইলাইট নেই'); return; }
+
+  // Remove ALL spans with same groupId (covers multi-paragraph highlight groups)
   const viewer = document.getElementById('sp-render-markdown');
   const targets = (viewer || document).querySelectorAll(`[data-hl-id="${groupId}"]`);
+  if(targets.length === 0) { _spHideHlBar(); _spCurrentSel = null; _spLastHlGroupId = null; showToast('হাইলাইট পাওয়া যায়নি'); return; }
   targets.forEach(sp => {
     const p = sp.parentNode;
     while(sp.firstChild) p.insertBefore(sp.firstChild, sp);
     p.removeChild(sp);
   });
   _spRemoveHighlight(chId, groupId);
-  _spLogEdit('হাইলাইট মুছুন', hitSpan.dataset.hlText || '');
+  _spLogEdit('হাইলাইট মুছুন', '');
   _spSaveDOMToNode();
-  _spHideHlBar(); _spCurrentSel = null; _spLastClickedHlSpan = null;
-  showToast('হাইলাইট মুছে ফেলা হয়েছে');
+  _spHideHlBar(); _spCurrentSel = null; _spLastHlGroupId = null;
+  showToast('হাইলাইট মুছে ফেলা হয়েছে ✓');
 }
 
 // ── Note popup (toolbar button) ────────────
