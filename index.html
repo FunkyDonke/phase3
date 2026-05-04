@@ -752,7 +752,8 @@
     #reader-mobile-nav { display: flex !important; }
     /* Tab bar hidden on mobile — bottom nav সব কিছু handle করে */
     #reader-tab-bar { display: none !important; }
-    #reader-chapter-ctx { display: none !important; }
+
+
     #reader-content-area {
       height: calc(100vh - 52px) !important;
       margin-bottom: 52px;
@@ -837,7 +838,7 @@
   .sp-tb-sep { width:1px; height:16px; background:var(--border2); flex-shrink:0; margin:0 2px; }
 
   /* ── Info bar ── */
-  #sp-info-bar { flex-shrink:0; display:none; align-items:center; gap:10px; flex-wrap:wrap; padding:3px 10px; background:var(--bg3); border-bottom:1px solid var(--border); font-size:11px; color:var(--text3); }
+  #sp-info-bar { flex-shrink:0; display:none; align-items:center; gap:10px; flex-wrap:wrap; padding:0 10px; background:var(--bg3); border-bottom:1px solid var(--border); font-size:11px; color:var(--text3); height:32px; min-height:32px; overflow:hidden; }
   #sp-info-bar.show { display:flex; }
   .sp-info-pill { display:flex; align-items:center; gap:3px; }
   #sp-tts-indicator { display:none; align-items:center; gap:4px; padding:1px 7px; background:var(--accent-subtle); border:1px solid var(--accent); border-radius:20px; font-size:10px; color:var(--accent-light); }
@@ -914,6 +915,7 @@
   #sp-draw-overlay{display:none;position:fixed;inset:0;z-index:700;background:transparent;overflow-y:scroll;overflow-x:hidden;touch-action:pan-y;}
   #sp-draw-canvas{position:absolute;top:0;left:0;pointer-events:auto;cursor:crosshair;touch-action:none;}
   #sp-draw-overlay.show{display:block}
+  #sp-draw-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto;cursor:crosshair}
   #sp-draw-toolbar{
     position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
     background:var(--bg2);border:1px solid var(--border2);border-radius:16px;
@@ -1609,9 +1611,9 @@
         flex-shrink:0;
         background:var(--bg2);border-bottom:1px solid var(--border);
         display:flex;align-items:stretch;
-        overflow-x:auto;overflow-y:visible;
+        overflow:visible;
         scrollbar-width:none;
-        position:relative;z-index:10;
+        position:relative;z-index:200;
       ">
         <!-- Back & TOC (always visible) -->
         <button class="rtab-btn rtab-action" onclick="showSubjects()" data-tip="বিষয় তালিকা" style="border-right:1px solid var(--border)">
@@ -1648,7 +1650,66 @@
           <button class="rtab-btn rtab-action" data-dropdown-trigger="true" onclick="toggleDropdown('reader-tools-dropdown')" data-tip="টুলস">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M5.93 4.93a10 10 0 0 0 0 14.14"/></svg>
           </button>
-          <div class="dropdown-menu" id="reader-tools-dropdown" style="right:0;top:100%;min-width:190px;z-index:500">
+          <div class="dropdown-menu" id="reader-tools-dropdown" style="right:0;top:calc(100% + 4px);min-width:240px;z-index:9999;max-height:90vh;overflow-y:auto">
+
+            <!-- ── কন্টেন্ট ── -->
+            <div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">কন্টেন্ট</div>
+            <div class="dropdown-item" onclick="spOpenURLModal();closeDropdown('reader-tools-dropdown')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+              ক্লাউড লিংক
+            </div>
+            <label class="dropdown-item" style="cursor:pointer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              ফাইল আপলোড (.txt/.md)
+              <input type="file" style="display:none" accept=".txt,.md" onchange="spLoadFile(this);closeDropdown('reader-tools-dropdown')">
+            </label>
+            <div class="dropdown-item" onclick="spOpenEditor();closeDropdown('reader-tools-dropdown')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Markdown এডিট
+            </div>
+
+            <div class="dropdown-divider"></div>
+
+            <!-- ── পড়ার মোড ── -->
+            <div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">পড়ার মোড</div>
+            <div class="dropdown-item" onclick="spToggleSplitMode();closeDropdown('reader-tools-dropdown')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              বই মোড
+              <span id="sp-split-badge" style="margin-left:auto;padding:1px 6px;border-radius:99px;font-size:9px;font-weight:700;background:var(--bg4);color:var(--text3)">বন্ধ</span>
+            </div>
+            <div class="dropdown-item" onclick="spToggleMiniToc();closeDropdown('reader-tools-dropdown')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Mini সূচিপত্র
+            </div>
+            <div class="dropdown-item" onclick="spOpenFocus();closeDropdown('reader-tools-dropdown')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+              ফোকাস মোড
+            </div>
+            <div class="dropdown-item" onclick="spToggleTTS();closeDropdown('reader-tools-dropdown')" id="sp-tts-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              পড়ে শোনাও (TTS)
+            </div>
+
+            <div class="dropdown-divider"></div>
+
+            <!-- ── অক্ষর আকার ── -->
+            <div style="padding:6px 12px 4px;display:flex;align-items:center;gap:8px">
+              <span style="font-size:10px;color:var(--text3);font-weight:700;flex-shrink:0">ক</span>
+              <input type="range" id="sp-font-slider" min="10" max="200" step="1" value="100" oninput="spApplyFontSize(this.value)" style="flex:1;accent-color:var(--accent)">
+              <span style="font-size:13px;font-weight:700;color:var(--text2);flex-shrink:0">ক</span>
+              <span id="sp-font-label" style="font-size:10px;font-weight:700;color:var(--accent-light);width:28px;text-align:right;flex-shrink:0">100%</span>
+            </div>
+            <!-- লাইনের ফাঁক -->
+            <div style="padding:2px 12px 6px;display:flex;align-items:center;gap:8px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              <input type="range" id="sp-lh-slider" min="12" max="28" step="1" value="18" oninput="spApplyLineHeight(this.value)" style="flex:1;accent-color:var(--accent)">
+              <span style="font-size:10px;color:var(--text3);flex-shrink:0">লাইন</span>
+            </div>
+
+            <div class="dropdown-divider"></div>
+
+            <!-- ── থিম ── -->
+            <div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">থিম ও সেটিংস</div>
             <div class="dropdown-item" onclick="toggleTheme();closeDropdown('reader-tools-dropdown')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2"/></svg>
               লাইট/ডার্ক
@@ -1657,7 +1718,6 @@
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
               রঙ থিম
             </div>
-            <div class="dropdown-divider"></div>
             <div class="dropdown-item" onclick="backupData();closeDropdown('reader-tools-dropdown')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               ব্যাকআপ
@@ -1671,13 +1731,6 @@
       </div>
 
       <!-- Chapter context bar -->
-      <div id="reader-chapter-ctx" style="
-        flex-shrink:0;padding:6px 16px;
-        background:var(--bg3);border-bottom:1px solid var(--border);
-        font-size:12px;color:var(--text3);
-        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-        display:none;
-      "></div>
 
       <!-- Tab content panels -->
       <div style="flex:1;overflow:hidden;position:relative">
@@ -1717,55 +1770,7 @@
             </div>
           </div>
 
-          <!-- ── Toolbar ── -->
-          <div id="sp-reader-toolbar" style="display:none">
-            <!-- Cloud URL -->
-            <button class="btn-icon" onclick="spOpenURLModal()" data-tip="ক্লাউড লিংক" style="padding:4px 7px;gap:3px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
-              <span style="font-size:11px">ক্লাউড</span>
-            </button>
-            <!-- File upload -->
-            <label class="btn-icon" style="padding:4px 7px;gap:3px;cursor:pointer" data-tip="ফাইল আপলোড (.txt/.md)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span style="font-size:11px">ফাইল</span>
-              <input type="file" style="display:none" accept=".txt,.md" onchange="spLoadFile(this)">
-            </label>
-            <!-- Edit -->
-            <button class="btn-icon" onclick="spOpenEditor()" data-tip="Markdown এডিট" style="padding:4px 7px;gap:3px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              <span style="font-size:11px">এডিট</span>
-            </button>
-            <div class="sp-tb-sep"></div>
-            <!-- Book mode toggle -->
-            <button class="btn-icon" id="sp-split-btn" onclick="spToggleSplitMode()" data-tip="বই মোড (দুই পাতা)" style="padding:4px 7px;gap:3px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-              <span style="font-size:11px">বই</span>
-              <span id="sp-split-badge" style="padding:1px 5px;border-radius:99px;font-size:9px;font-weight:700;background:var(--bg4);color:var(--text3)">বন্ধ</span>
-            </button>
-            <div class="sp-tb-sep"></div>
-            <!-- Font size -->
-            <span style="font-size:10px;color:var(--text3);font-weight:700;flex-shrink:0">ক</span>
-            <input type="range" id="sp-font-slider" min="10" max="200" step="1" value="100" oninput="spApplyFontSize(this.value)" data-tip="অক্ষর আকার">
-            <span style="font-size:13px;font-weight:700;color:var(--text2);flex-shrink:0">ক</span>
-            <span id="sp-font-label" style="font-size:10px;font-weight:700;color:var(--accent-light);width:26px;text-align:center;flex-shrink:0">100%</span>
-            <div class="sp-tb-sep"></div>
-            <!-- Line height -->
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            <input type="range" id="sp-lh-slider" min="12" max="28" step="1" value="18" oninput="spApplyLineHeight(this.value)" data-tip="লাইনের ফাঁক">
-            <div class="sp-tb-sep"></div>
-            <!-- Mini TOC -->
-            <button class="btn-icon" id="sp-toc-btn" onclick="spToggleMiniToc()" data-tip="Mini সূচিপত্র" style="padding:4px 5px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            </button>
-            <!-- TTS -->
-            <button class="btn-icon" id="sp-tts-btn" onclick="spToggleTTS()" data-tip="পড়ে শোনাও (TTS)" style="padding:4px 5px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-            </button>
-            <!-- Focus mode -->
-            <button class="btn-icon" onclick="spOpenFocus()" data-tip="ফোকাস মোড (ফুলস্ক্রিন)" style="padding:4px 5px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-            </button>
-          </div>
+
 
           <!-- ── Content body ── -->
           <div id="sp-content-body">
@@ -3414,12 +3419,7 @@ function selectChapter(chId, scroll = true) {
   // Find node
   const node = currentSubject ? findNode(currentSubject.chapters, chId) : null;
 
-  // Update context bar
-  const ctx = document.getElementById('reader-chapter-ctx');
-  if (ctx && node) {
-    ctx.style.display = 'block';
-    ctx.textContent = `${currentSubject.name} › ${node.title}`;
-  }
+  // Update context bar (removed - bar deleted for more reading space)
 
   renderChapters();
   startStudySession(chId);
@@ -3861,6 +3861,7 @@ let spImgLayout         = 'float';
 let spSplitModeActive   = localStorage.getItem('sp_splitMode') === 'true';
 let spMiniTocVisible    = false;
 let _spCurrentSel       = null;
+let _spLastHlGroupId    = null;  // tracks last hl group for group-erase
 
 // Stores fetched text keyed by chapterId (cache for session)
 let _spFetchCache = {};
@@ -3875,9 +3876,27 @@ let _spTtsHighlightEl   = null; // currently highlighted element
 let _spRenderedHTML   = '';   // last rendered HTML
 let _spRenderedMdText = '';   // last raw markdown/plain text
 
+// ── Word count helper ──────────────────────
+function _spUpdateWordCount(text) {
+  const wEl = document.getElementById('sp-word-count');
+  const tEl = document.getElementById('sp-read-time');
+  if (!wEl || !tEl) return;
+  // Strip HTML tags (for sp-html-v1) then count whitespace-separated tokens
+  let plain = text || '';
+  if (plain.startsWith('<!-- sp-html-v1 -->')) {
+    plain = plain.replace('<!-- sp-html-v1 -->', '');
+    plain = plain.replace(/<[^>]+>/g, ' ');
+  }
+  // Remove markdown syntax characters
+  plain = plain.replace(/[#*_`~\[\]()!|]/g, ' ');
+  const wordCount = plain.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const mins = Math.max(1, Math.ceil(wordCount / 150));
+  wEl.textContent = wordCount.toLocaleString() + ' শব্দ';
+  tEl.textContent = mins + ' মিনিট';
+}
+
 // ── Render entry ──────────────────────────
 function spRenderTextTab() {
-  const toolbar  = document.getElementById('sp-reader-toolbar');
   const infoBar  = document.getElementById('sp-info-bar');
   const noChEl   = document.getElementById('sp-no-chapter');
   const emptyEl  = document.getElementById('sp-empty-msg');
@@ -3887,8 +3906,7 @@ function spRenderTextTab() {
   const viewer   = document.getElementById('sp-render-markdown');
 
   if (!activeChapterId || !currentSubject) {
-    if (toolbar) toolbar.style.display = 'none';
-    if (infoBar) infoBar.classList.remove('show');
+      if (infoBar) infoBar.classList.remove('show');
     if (noChEl)  noChEl.style.display = 'flex';
     if (emptyEl) emptyEl.style.display = 'none';
     if (scrollV) scrollV.style.display = '';
@@ -3904,11 +3922,15 @@ function spRenderTextTab() {
   if (!node) return;
   if (!node.content) node.content = { text:'', textUrl:'', pdfs:[], videos:[], qna:[] };
 
-  if (toolbar) toolbar.style.display = 'flex';
+  if (infoBar) infoBar.classList.add('show'); // show info bar immediately with toolbar
+  if (emptyEl) emptyEl.style.display = 'none'; // hide empty overlay immediately
+  // Pre-update word count from node.content.text if available (before async fetch)
+  if (node.content.text && node.content.text.trim()) {
+    _spUpdateWordCount(node.content.text);
+  }
   spBookModeActive = false; spBookPages = [];
   if (wrapper) wrapper.classList.remove('active');
   if (viewer) viewer.innerHTML = '';
-  if (emptyEl) emptyEl.style.display = 'none'; // Always hide empty state immediately on chapter switch
   _spTtsStop();
   spSplitModeActive = localStorage.getItem('sp_splitMode') === 'true';
   _spUpdateSplitBadge();
@@ -3987,16 +4009,12 @@ function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, c
   if (scrollV) scrollV.style.display = spSplitModeActive ? 'none' : '';
   if (emptyEl) emptyEl.style.display = 'none';
   if (infoBar) infoBar.classList.add('show');
-  const words = text.replace(/[#*`>\[\]!]/g,'').trim().split(/\s+/).filter(Boolean).length;
-  const mins  = Math.max(1, Math.ceil(words / 150));
-  const wEl = document.getElementById('sp-word-count');
-  const tEl = document.getElementById('sp-read-time');
-  if (wEl) wEl.textContent = words + ' শব্দ';
-  if (tEl) tEl.textContent = mins + ' মিনিট';
   if (spSplitModeActive) _spActivateBook();
   _spBuildMiniToc(viewer);
   // Re-render sidebar so mini-toc appears nested under active chapter
   if(typeof renderChapters === 'function') renderChapters();
+  // Update word count using the rendered text
+  _spUpdateWordCount(text);
 }
 
 // ── Markdown parse ─────────────────────────
@@ -4123,25 +4141,17 @@ function _spSplitBlock(block, pages, curHTML, curH, pageH) {
 function _spPaginate(html, pageH) {
   const tmp=document.createElement('div'); tmp.innerHTML=html;
 
-  // Get top-level blocks; if direct children are only wrapper divs (e.g. from markdown),
-  // unwrap one level so paragraphs become top-level. Preserve highlight/style spans inside.
-  function getBlocks(parent) {
-    const children = Array.from(parent.children);
-    if(children.length === 0) return [];
-    // If all children are divs with no special class/data AND they contain block elements, unwrap
-    const allArePlainDivs = children.every(ch => {
-      const tag = (ch.tagName||'').toLowerCase();
-      return tag === 'div' && !ch.dataset.hlId && !ch.dataset.hlGroup &&
-        !ch.classList.contains('float-right') && !ch.classList.contains('float-left') &&
-        !ch.classList.contains('grid') && !ch.getAttribute('style')?.includes('text-align:center');
-    });
-    if(allArePlainDivs && children.length === 1) {
-      return Array.from(children[0].children);
+  // Simple block collector: if top level is a single wrapper div, go one level deeper
+  function getTopBlocks(parent) {
+    const kids = Array.from(parent.children);
+    if(kids.length === 1) {
+      const t = (kids[0].tagName||'').toLowerCase();
+      if(t === 'div' || t === 'section') return Array.from(kids[0].children);
     }
-    return children;
+    return kids;
   }
 
-  const blocks=getBlocks(tmp), pages=[]; let curHTML='',curH=0;
+  const blocks=getTopBlocks(tmp), pages=[]; let curHTML='',curH=0;
   const SPLIT=new Set(['p','h1','h2','h3','h4','h5','h6','li','blockquote','dt','dd','br']);
   const flush=()=>{ if(curHTML.trim())pages.push(curHTML); curHTML=''; curH=0; };
   for(const b of blocks){
@@ -4613,58 +4623,47 @@ function spClearEditHistory() {
 }
 
 // ── Setup selection listeners ──────────────
-// ── Global highlight state ─────────────────
-let _spLastHlGroupId = null; // last clicked/applied highlight group id for erase
-
 function _spSetupSelection(container, chId) {
   if(!container || container._spSelSetup) return;
   container._spSelSetup = true;
 
-  // Show bar after text selection (mouseup/touchend)
-  const onSelectionEnd = (delayMs) => {
-    setTimeout(() => {
-      const sel = window.getSelection();
-      if(!sel || sel.isCollapsed || !sel.toString().trim()) return;
-      try {
-        const range = sel.getRangeAt(0);
-        if(!container.contains(range.commonAncestorContainer)) return;
-        _spCurrentSel = { range: range.cloneRange(), chId, container };
-        _spLastHlGroupId = null; // new text selection resets last hl group
-        _spShowHlBar(range);
-      } catch(e) {}
-    }, delayMs);
-  };
-
-  container.addEventListener('mouseup', () => onSelectionEnd(10));
-  container.addEventListener('touchend', () => onSelectionEnd(160));
-
-  // Click on highlighted/styled span: use mousedown + stopPropagation to beat document handler
-  container.addEventListener('mousedown', e => {
-    const hlSpan = e.target.closest('[data-hl-id]');
-    const styled = !hlSpan && e.target.closest('strong,em,span[style],u,s,b,i');
-    if(!hlSpan && !styled) return;
-
-    e.stopPropagation(); // stop document mousedown from hiding bar
-
-    if(hlSpan) {
-      const range = document.createRange();
-      range.selectNodeContents(hlSpan);
-      _spCurrentSel = { range: range.cloneRange(), chId, container };
-      _spLastHlGroupId = hlSpan.dataset.hlId;
-      // Show after paint so any selection clear doesn't interfere
-      requestAnimationFrame(() => {
-        _spShowHlOptions(hlSpan, chId);
-        _spShowHlBarAtEl(hlSpan);
-      });
-    } else if(styled) {
-      const range = document.createRange();
-      range.selectNodeContents(styled);
+  // ── Text selection → show bar ──
+  const onSelEnd = (delay) => setTimeout(() => {
+    const sel = window.getSelection();
+    if(!sel || sel.isCollapsed || !sel.toString().trim()) return;
+    try {
+      const range = sel.getRangeAt(0);
+      if(!container.contains(range.commonAncestorContainer)) return;
       _spCurrentSel = { range: range.cloneRange(), chId, container };
       _spLastHlGroupId = null;
-      requestAnimationFrame(() => _spShowHlBarAtEl(styled));
-    }
+      _spShowHlBar(range);
+    } catch(e) {}
+  }, delay);
+
+  container.addEventListener('mouseup',  () => onSelEnd(10));
+  container.addEventListener('touchend', () => onSelEnd(160));
+
+  // ── Click on highlight span → show bar (mousedown beats document handler) ──
+  container.addEventListener('mousedown', e => {
+    const hlSpan = e.target.closest('[data-hl-id]');
+    const styled = !hlSpan && e.target.closest('strong,em,u,s,b,i,span[style]');
+    if(!hlSpan && !styled) return;
+
+    e.stopPropagation(); // prevent document mousedown from hiding bar
+
+    const target = hlSpan || styled;
+    const range = document.createRange();
+    range.selectNodeContents(target);
+    _spCurrentSel = { range: range.cloneRange(), chId, container };
+    _spLastHlGroupId = hlSpan ? hlSpan.dataset.hlId : null;
+
+    requestAnimationFrame(() => {
+      if(hlSpan) _spShowHlOptions(hlSpan, chId);
+      _spShowHlBarAtEl(target);
+    });
   });
 }
+
 
 function _spShowHlBar(range) {
   const bar = document.getElementById('sp-hl-bar');
@@ -4684,14 +4683,19 @@ function _spShowHlBarAtEl(el) {
 function _spHideHlBar() {
   const bar = document.getElementById('sp-hl-bar');
   if(bar) bar.classList.remove('show');
+  // Don't null _spCurrentSel here — operations need it
 }
-// Hide bar on outside click — stopPropagation from span mousedown prevents this for span clicks
+
+
+// Hide bar on outside click — span mousedown uses stopPropagation so this won't fire for spans
 document.addEventListener('mousedown', e => {
   const bar  = document.getElementById('sp-hl-bar');
   const opts = document.getElementById('sp-hl-options');
   const note = document.getElementById('sp-note-popup');
   const tedt = document.getElementById('sp-text-edit-popup');
-  if(bar  && bar.classList.contains('show')  && !bar.contains(e.target)) { _spHideHlBar(); _spCurrentSel = null; _spLastHlGroupId = null; }
+  // Extra safety: don't hide if click is on a highlight span or styled element
+  const onSpan = e.target.closest('[data-hl-id]') || e.target.closest('strong,em,u,s,b,i,span[style]');
+  if(bar  && bar.classList.contains('show')  && !bar.contains(e.target) && !onSpan) { _spHideHlBar(); _spCurrentSel = null; _spLastHlGroupId = null; }
   if(opts && opts.style.display !== 'none'   && !opts.contains(e.target) && !e.target.closest('[data-hl-id]')) _spHideHlOptions();
   if(note && note.classList.contains('show') && !note.contains(e.target)) spHideNotePopup();
   if(tedt && tedt.classList.contains('show') && !tedt.contains(e.target)) spHideTextEditPopup();
@@ -4729,8 +4733,7 @@ function spApplyHighlight(color, customHex) {
   _spLogEdit('হাইলাইট', text.substring(0,30) + (text.length>30?'…':''));
   // Save DOM directly (don't use _spSaveData which overwrites viewer innerHTML)
   _spSaveDOMToNode();
-  // Track last applied group so erase button works immediately after applying
-  _spLastHlGroupId = groupId;
+  _spLastHlGroupId = groupId; // track so erase button works right after applying
   _spHideHlBar();
   _spCurrentSel = null;
   showToast('✅ হাইলাইট হয়েছে');
@@ -4766,24 +4769,25 @@ function _spHexToRgba(hex, a) {
 }
 
 function spEraseHighlight() {
-  // Priority 1: use last clicked hl group id (most reliable for multi-para group erase)
+  // Use last-clicked group id first (covers multi-paragraph group erase)
   let groupId = _spLastHlGroupId;
-  let chId = _spCurrentSel ? _spCurrentSel.chId : (activeChapterId || '');
+  let chId    = _spCurrentSel ? _spCurrentSel.chId : (activeChapterId || '');
 
-  // Priority 2: try to find from current selection range
+  // Fallback: find from current selection range
   if(!groupId && _spCurrentSel && _spCurrentSel.range) {
-    const range = _spCurrentSel.range;
-    const container = range.commonAncestorContainer;
-    const hitSpan = (container.nodeType === 3 ? container.parentElement : container).closest('[data-hl-id]');
-    if(hitSpan) { groupId = hitSpan.dataset.hlId; chId = _spCurrentSel.chId; }
+    const cont = _spCurrentSel.range.commonAncestorContainer;
+    const hit  = (cont.nodeType === 3 ? cont.parentElement : cont).closest('[data-hl-id]');
+    if(hit) { groupId = hit.dataset.hlId; }
   }
 
-  if(!groupId) { _spHideHlBar(); _spCurrentSel = null; _spLastHlGroupId = null; showToast('এখানে হাইলাইট নেই'); return; }
+  if(!groupId) {
+    _spHideHlBar(); _spCurrentSel = null; _spLastHlGroupId = null;
+    showToast('এখানে হাইলাইট নেই'); return;
+  }
 
-  // Remove ALL spans with same groupId (covers multi-paragraph highlight groups)
-  const viewer = document.getElementById('sp-render-markdown');
+  // Remove ALL spans sharing this groupId (entire multi-paragraph group at once)
+  const viewer  = document.getElementById('sp-render-markdown');
   const targets = (viewer || document).querySelectorAll(`[data-hl-id="${groupId}"]`);
-  if(targets.length === 0) { _spHideHlBar(); _spCurrentSel = null; _spLastHlGroupId = null; showToast('হাইলাইট পাওয়া যায়নি'); return; }
   targets.forEach(sp => {
     const p = sp.parentNode;
     while(sp.firstChild) p.insertBefore(sp.firstChild, sp);
@@ -5181,22 +5185,35 @@ function spOpenDrawing() {
   const toolbar  = document.getElementById('sp-draw-toolbar');
   if(!overlay || !canvas || !toolbar) return;
 
-  // Canvas = very tall for infinite-like drawing (can extend dynamically)
+  // Canvas = full page height (3x viewport for plenty of space)
   const W = window.innerWidth;
-  const INITIAL_H = Math.max(window.innerHeight * 10, 8000); // Start with 10x viewport
+  const INIT_H = window.innerHeight * 8; // tall starting canvas
   canvas.width  = W;
-  canvas.height = INITIAL_H;
+  canvas.height = INIT_H;
   canvas.style.width  = W + 'px';
-  canvas.style.height = INITIAL_H + 'px';
-  // Overlay scrollable container
+  canvas.style.height = INIT_H + 'px';
   overlay.style.width  = W + 'px';
-  overlay.style.height = '100vh'; // Viewport height, canvas scrolls inside
+  overlay.style.height = '100vh';
+  // Extend canvas when user scrolls near the bottom
+  overlay.addEventListener('scroll', function _extendCanvas() {
+    if(overlay.scrollTop + overlay.clientHeight > canvas.height - 400) {
+      const oldH = canvas.height;
+      const newH = oldH + window.innerHeight * 5;
+      const imgData = _spDrawCtx.getImageData(0, 0, canvas.width, oldH);
+      canvas.height = newH;
+      canvas.style.height = newH + 'px';
+      _spDrawCtx.putImageData(imgData, 0, 0);
+      _spDrawCtx.lineCap  = 'round';
+      _spDrawCtx.lineJoin = 'round';
+      _spApplyDrawStyle();
+    }
+  }, { passive: true });
 
   _spDrawCtx = canvas.getContext('2d');
   _spDrawCtx.lineCap  = 'round';
   _spDrawCtx.lineJoin = 'round';
 
-  // Sync overlay scroll with page scroll on open
+  // Sync overlay scroll with page scroll
   const contentEl = document.getElementById('sp-content-body');
   if(contentEl) overlay.scrollTop = contentEl.scrollTop;
 
@@ -5214,32 +5231,12 @@ function spOpenDrawing() {
   toolbar.style.display = 'flex';
   _spInitDrawToolbarDrag();
 
-  // Extend canvas when approaching bottom
-  function _spExtendCanvasIfNeeded() {
-    if(overlay.scrollTop + overlay.clientHeight > canvas.height - 300) {
-      const oldH = canvas.height;
-      const newH = oldH + window.innerHeight * 5;
-      // Save current drawing
-      const imgData = _spDrawCtx.getImageData(0, 0, canvas.width, oldH);
-      canvas.height = newH;
-      canvas.style.height = newH + 'px';
-      // Restore drawing + reapply context settings
-      _spDrawCtx.putImageData(imgData, 0, 0);
-      _spDrawCtx.lineCap  = 'round';
-      _spDrawCtx.lineJoin = 'round';
-      _spApplyDrawStyle();
-    }
-  }
-  overlay.addEventListener('scroll', _spExtendCanvasIfNeeded, { passive: true });
-
-  // Correct coordinate calculation: clientY - overlay's visible top + scrollTop
+  // Correct coords: clientY relative to overlay top + scrollTop (scroll-safe)
   function getPos(e) {
     const rect = overlay.getBoundingClientRect();
-    const scaleX = canvas.width / canvas.offsetWidth;
-    const scaleY = canvas.height / canvas.offsetHeight;
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top + overlay.scrollTop) * scaleY,
+      x: (e.clientX - rect.left),
+      y: (e.clientY - rect.top) + overlay.scrollTop,
     };
   }
 
