@@ -838,13 +838,8 @@
   .sp-tb-sep { width:1px; height:16px; background:var(--border2); flex-shrink:0; margin:0 2px; }
 
   /* ── Info bar ── */
-  #sp-info-bar { flex-shrink:0; display:none; align-items:center; gap:10px; flex-wrap:wrap; padding:0 10px; background:var(--bg3); border-bottom:1px solid var(--border); font-size:11px; color:var(--text3); height:32px; min-height:32px; overflow:hidden; }
-  #sp-info-bar.show { display:flex; }
-  .sp-info-pill { display:flex; align-items:center; gap:3px; }
-  #sp-tts-indicator { display:none; align-items:center; gap:4px; padding:1px 7px; background:var(--accent-subtle); border:1px solid var(--accent); border-radius:20px; font-size:10px; color:var(--accent-light); }
   .sp-tts-reading { background:rgba(99,102,241,.15); border-radius:3px; transition:background .2s; }
   [data-note="true"]::after { content:"📝"; font-size:9px; vertical-align:super; margin-left:1px; }
-  #sp-tts-indicator.show { display:flex; }
   .sp-tts-wave span { display:inline-block; width:3px; height:9px; background:var(--accent-light); border-radius:99px; margin:0 1px; animation:spTtsWave .8s ease-in-out infinite; }
   .sp-tts-wave span:nth-child(2){animation-delay:.15s} .sp-tts-wave span:nth-child(3){animation-delay:.3s}
   @keyframes spTtsWave{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
@@ -1652,6 +1647,23 @@
           </button>
           <div class="dropdown-menu" id="reader-tools-dropdown" style="right:0;top:calc(100% + 4px);min-width:240px;z-index:9999;max-height:90vh;overflow-y:auto">
 
+            <!-- ── Word count header ── -->
+            <div id="sp-tools-stat-header" style="
+              padding:10px 14px 8px;
+              border-bottom:1px solid var(--border);
+              margin-bottom:4px;
+              display:flex; align-items:center; justify-content:space-between;
+            ">
+              <div style="display:flex;align-items:center;gap:6px;color:var(--text2);font-size:12px;font-weight:600">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span id="sp-read-time">— মিনিট</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;color:var(--text2);font-size:12px;font-weight:600">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                <span id="sp-word-count">— শব্দ</span>
+              </div>
+            </div>
+
             <!-- ── কন্টেন্ট ── -->
             <div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">কন্টেন্ট</div>
             <div class="dropdown-item" onclick="spOpenURLModal();closeDropdown('reader-tools-dropdown')">
@@ -1739,36 +1751,7 @@
         <div id="tab-content-text" class="reader-tab active-tab" style="position:relative;display:flex;flex-direction:column;height:100%;overflow:hidden">
 
           <!-- ── Info bar ── -->
-          <div id="sp-info-bar">
-            <div class="sp-info-pill">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <span id="sp-read-time">— মিনিট</span>
-            </div>
-            <div class="sp-info-pill">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
-              <span id="sp-word-count">— শব্দ</span>
-            </div>
-            <!-- TTS controls (shown when TTS active) -->
-            <div id="sp-tts-indicator" style="gap:6px">
-              <button onclick="spTtsPrev()" style="background:none;border:none;color:var(--accent-light);cursor:pointer;padding:0;display:flex;align-items:center" data-tip="আগের বাক্য">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-              </button>
-              <div class="sp-tts-wave"><span></span><span></span><span></span></div>
-              <button id="sp-tts-pause-btn" onclick="spTtsPause()" style="background:none;border:none;color:var(--accent-light);cursor:pointer;padding:0;display:flex;align-items:center;font-size:12px" data-tip="পজ/চালু">⏸</button>
-              <button onclick="spTtsNext()" style="background:none;border:none;color:var(--accent-light);cursor:pointer;padding:0;display:flex;align-items:center" data-tip="পরের বাক্য">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-              </button>
-              <select id="sp-tts-rate" onchange="spTtsChangeRate(this.value)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--accent-light);border-radius:5px;font-size:10px;padding:1px 4px;cursor:pointer;font-family:'Hind Siliguri',sans-serif">
-                <option value="0.6">ধীর</option>
-                <option value="0.85">মাঝারি</option>
-                <option value="0.92" selected>স্বাভাবিক</option>
-                <option value="1.2">দ্রুত</option>
-                <option value="1.5">খুব দ্রুত</option>
-              </select>
-              <button onclick="spStopTTS()" style="background:none;border:none;color:var(--accent-light);cursor:pointer;font-size:10px;padding:0;font-family:'Hind Siliguri',sans-serif">■ থামাও</button>
-              <button onclick="spTtsRestart()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0;font-family:'Hind Siliguri',sans-serif">↩ রিস্টার্ট</button>
-            </div>
-          </div>
+
 
 
 
@@ -3897,17 +3880,16 @@ function _spUpdateWordCount(text) {
 
 // ── Render entry ──────────────────────────
 function spRenderTextTab() {
-  const infoBar  = document.getElementById('sp-info-bar');
   const noChEl   = document.getElementById('sp-no-chapter');
   const emptyEl  = document.getElementById('sp-empty-msg');
   const loader   = document.getElementById('sp-loading');
   const scrollV  = document.getElementById('sp-reader-scroll-view');
   const wrapper  = document.getElementById('sp-book-mode-wrapper');
   const viewer   = document.getElementById('sp-render-markdown');
+  const infoBar  = null; // sp-info-bar removed; kept as null so _spDoRender param stays valid
 
   if (!activeChapterId || !currentSubject) {
-      if (infoBar) infoBar.classList.remove('show');
-    if (noChEl)  noChEl.style.display = 'flex';
+        if (noChEl)  noChEl.style.display = 'flex';
     if (emptyEl) emptyEl.style.display = 'none';
     if (scrollV) scrollV.style.display = '';
     if (wrapper) wrapper.classList.remove('active');
@@ -3922,7 +3904,6 @@ function spRenderTextTab() {
   if (!node) return;
   if (!node.content) node.content = { text:'', textUrl:'', pdfs:[], videos:[], qna:[] };
 
-  if (infoBar) infoBar.classList.add('show'); // show info bar immediately with toolbar
   if (emptyEl) emptyEl.style.display = 'none'; // hide empty overlay immediately
   // Pre-update word count from node.content.text if available (before async fetch)
   if (node.content.text && node.content.text.trim()) {
@@ -3951,8 +3932,7 @@ function spRenderTextTab() {
       if (loader) loader.style.display = 'flex';
       if (scrollV) scrollV.style.display = spSplitModeActive ? 'none' : '';
       if (emptyEl) emptyEl.style.display = 'none';
-      if (infoBar) infoBar.classList.remove('show');
-      spFetchText(node.content.textUrl)
+          spFetchText(node.content.textUrl)
         .then(text => {
           // Cache it
           _spFetchCache[chId] = text;
@@ -3973,8 +3953,7 @@ function spRenderTextTab() {
   } else {
     if (scrollV) scrollV.style.display = '';
     if (emptyEl) emptyEl.style.display = 'flex';
-    if (infoBar) infoBar.classList.remove('show');
-    _spRenderedMdText = ''; _spRenderedHTML = '';
+      _spRenderedMdText = ''; _spRenderedHTML = '';
     if (spSplitModeActive) _spShowBlankBook();
   }
 }
@@ -4008,7 +3987,6 @@ function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, c
   }
   if (scrollV) scrollV.style.display = spSplitModeActive ? 'none' : '';
   if (emptyEl) emptyEl.style.display = 'none';
-  if (infoBar) infoBar.classList.add('show');
   if (spSplitModeActive) _spActivateBook();
   _spBuildMiniToc(viewer);
   // Re-render sidebar so mini-toc appears nested under active chapter
@@ -4305,10 +4283,10 @@ function _spTtsStop() {
   _spTtsActive=false;
   _spTtsPaused=false;
   _spTtsHighlightSentence(-1);
-  const ind=document.getElementById('sp-tts-indicator');
+  const pill=document.getElementById('sp-tts-pill');
   const btn=document.getElementById('sp-tts-btn');
   const pauseBtn=document.getElementById('sp-tts-pause-btn');
-  if(ind)ind.classList.remove('show');
+  if(pill){pill.style.display='none';}
   if(btn)btn.classList.remove('active');
   if(pauseBtn)pauseBtn.textContent='⏸';
 }
@@ -4402,9 +4380,9 @@ function spToggleTTS() {
   _spTtsSentences=_spTtsSplitSentences(plain);
   if(!_spTtsSentences.length){showToast('কোনো বাক্য নেই');return;}
   _spTtsActive=true;
-  const ind=document.getElementById('sp-tts-indicator');
+  const pill=document.getElementById('sp-tts-pill');
   const btn=document.getElementById('sp-tts-btn');
-  if(ind)ind.classList.add('show');
+  if(pill){pill.style.display='flex';}
   if(btn)btn.classList.add('active');
   if(_spTtsCurIdx>=_spTtsSentences.length)_spTtsCurIdx=0;
   _spTtsSpeakIdx(_spTtsCurIdx);
@@ -5702,6 +5680,48 @@ function showToast(msg, duration = 2500) {
     <button onclick="spApplyTextEdit()" style="flex:1;padding:5px 8px;border-radius:7px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-family:'Hind Siliguri',sans-serif">✅ প্রতিস্থাপন করুন</button>
     <button onclick="spHideTextEditPopup()" style="flex:1;padding:5px 8px;border-radius:7px;background:var(--bg3);color:var(--text2);border:1px solid var(--border2);cursor:pointer;font-size:12px;font-family:'Hind Siliguri',sans-serif">বাতিল</button>
   </div>
+</div>
+
+
+<!-- ── Floating TTS Pill ── -->
+<div id="sp-tts-pill" style="
+  display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  background:var(--bg2); border:1px solid var(--border2);
+  border-radius:999px; padding:8px 16px;
+  box-shadow:0 8px 32px rgba(0,0,0,.35);
+  align-items:center; gap:10px;
+  z-index:9999; font-family:'Hind Siliguri',sans-serif;
+  backdrop-filter:blur(12px);
+  transition:opacity .25s, transform .25s;
+">
+  <!-- wave -->
+  <div class="sp-tts-wave" style="flex-shrink:0"><span></span><span></span><span></span></div>
+  <!-- prev -->
+  <button onclick="spTtsPrev()" title="আগের বাক্য" style="background:none;border:none;color:var(--text2);cursor:pointer;padding:2px;display:flex;align-items:center;border-radius:6px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='none'">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+  </button>
+  <!-- pause/resume -->
+  <button id="sp-tts-pause-btn" onclick="spTtsPause()" title="পজ/চালু" style="background:var(--accent);border:none;color:#fff;cursor:pointer;padding:5px 7px;display:flex;align-items:center;border-radius:50%;font-size:13px;line-height:1">⏸</button>
+  <!-- next -->
+  <button onclick="spTtsNext()" title="পরের বাক্য" style="background:none;border:none;color:var(--text2);cursor:pointer;padding:2px;display:flex;align-items:center;border-radius:6px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background='none'">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+  </button>
+  <!-- divider -->
+  <div style="width:1px;height:18px;background:var(--border2);flex-shrink:0"></div>
+  <!-- speed -->
+  <select id="sp-tts-rate" onchange="spTtsChangeRate(this.value)" style="background:transparent;border:none;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Hind Siliguri',sans-serif;padding:0 2px">
+    <option value="0.6">ধীর</option>
+    <option value="0.85">মাঝারি</option>
+    <option value="0.92" selected>স্বাভাবিক</option>
+    <option value="1.2">দ্রুত</option>
+    <option value="1.5">খুব দ্রুত</option>
+  </select>
+  <!-- divider -->
+  <div style="width:1px;height:18px;background:var(--border2);flex-shrink:0"></div>
+  <!-- restart -->
+  <button onclick="spTtsRestart()" title="রিস্টার্ট" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 4px;border-radius:6px;font-family:'Hind Siliguri',sans-serif" onmouseover="this.style.color='var(--text1)'" onmouseout="this.style.color='var(--text3)'">↩</button>
+  <!-- stop -->
+  <button onclick="spStopTTS()" title="থামাও" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px;border-radius:6px;font-family:'Hind Siliguri',sans-serif" onmouseover="this.style.color='var(--red,#ef4444)'" onmouseout="this.style.color='var(--text3)'">■</button>
 </div>
 
 </body>
