@@ -4086,11 +4086,8 @@ function _spFitAboveNav() {
   contentArea.style.height    = availH + 'px';
   contentArea.style.maxHeight = availH + 'px';
 
-  // If book mode is active, re-paginate with new height
-  if (spSplitModeActive && spBookModeActive) {
-    clearTimeout(window._spFitNavTimer);
-    window._spFitNavTimer = setTimeout(() => _spActivateBook(), 120);
-  }
+  // Note: do NOT call _spActivateBook here — it resets pagination and snaps back to page 1
+  // Repagination on resize is handled by the window resize listener with _spRepaginate
 }
 
 // Run on load + on resize + on scroll (address bar show/hide changes viewport)
