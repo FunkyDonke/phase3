@@ -3818,10 +3818,10 @@ function spRenderTextTab() {
     _spUpdateWordCount(node.content.text);
   }
   spBookModeActive = false; spBookPages = [];
-  if (wrapper) wrapper.classList.remove('active');
+  if (wrapper) { wrapper.classList.remove('active'); }
+  if (scrollV) { scrollV.style.display = spSplitModeActive ? 'none' : ''; }  // keep hidden if book mode on
   if (viewer) viewer.innerHTML = '';
   _spTtsStop();
-  spSplitModeActive = localStorage.getItem('sp_splitMode') === 'true';
   _spUpdateSplitBadge();
 
   const chId = node.id;
@@ -3895,7 +3895,7 @@ function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, c
   }
   if (scrollV) scrollV.style.display = spSplitModeActive ? 'none' : '';
   if (emptyEl) emptyEl.style.display = 'none';
-  if (spSplitModeActive) _spActivateBook();
+  if (spSplitModeActive) { _spFitAboveNav(); _spActivateBook(); }
   _spBuildMiniToc(viewer);
   // Re-render sidebar so mini-toc appears nested under active chapter
   if(typeof renderChapters === 'function') renderChapters();
@@ -4064,28 +4064,73 @@ function _spPaginate(html, pageH) {
   flush();
   return pages.length?pages:[''];
 }
+// ── Mobile layout: dynamically fit content above navbar ───────────────
+function _spFitAboveNav() {
+  const nav = document.getElementById('reader-mobile-nav');
+  const contentArea = document.getElementById('reader-content-area');
+  if (!nav || !contentArea) return;
+
+  const navVisible = window.getComputedStyle(nav).display !== 'none';
+  if (!navVisible) {
+    // Desktop: reset everything
+    contentArea.style.height = '';
+    contentArea.style.maxHeight = '';
+    return;
+  }
+
+  // Mobile: measure actual navbar top edge = where content must stop
+  const navRect = nav.getBoundingClientRect();
+  const tabBar  = document.getElementById('reader-tab-bar');
+  const tabH    = tabBar ? tabBar.getBoundingClientRect().bottom : 0;
+  const availH  = navRect.top - tabH;
+  contentArea.style.height    = availH + 'px';
+  contentArea.style.maxHeight = availH + 'px';
+
+  // If book mode is active, re-paginate with new height
+  if (spSplitModeActive && spBookModeActive) {
+    clearTimeout(window._spFitNavTimer);
+    window._spFitNavTimer = setTimeout(() => _spActivateBook(), 120);
+  }
+}
+
+// Run on load + on resize + on scroll (address bar show/hide changes viewport)
+window.addEventListener('resize', _spFitAboveNav);
+window.addEventListener('scroll', _spFitAboveNav, {passive:true});
+document.addEventListener('DOMContentLoaded', _spFitAboveNav);
+setTimeout(_spFitAboveNav, 200);
+setTimeout(_spFitAboveNav, 800);
 function _spActivateBook() {
-  _spFitAboveNav(); // ensure layout is correct before paginating
-  const viewer=document.getElementById('sp-render-markdown');
-  const scrollV=document.getElementById('sp-reader-scroll-view');
-  const wrapper=document.getElementById('sp-book-mode-wrapper');
-  const rawHTML=viewer?viewer.innerHTML:'';
-  if(!rawHTML.trim()){if(scrollV)scrollV.style.display='';return;}
-  spBookModeActive=true; _spBookRawHTML=rawHTML;
-  if(scrollV)scrollV.style.display='none';
-  if(wrapper)wrapper.classList.add('active');
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    const ca=document.getElementById('sp-book-left-content-area');
-    if(!ca)return;
-    const cs=window.getComputedStyle(ca);
-    const pH=ca.clientHeight-(parseFloat(cs.paddingTop)||0)-(parseFloat(cs.paddingBottom)||0);
-    _spProbeWidth=ca.clientWidth-(parseFloat(cs.paddingLeft)||0)-(parseFloat(cs.paddingRight)||0);
+  if (!spSplitModeActive) return; // guard: only run if book mode is actually on
+  const viewer  = document.getElementById('sp-render-markdown');
+  const scrollV = document.getElementById('sp-reader-scroll-view');
+  const wrapper = document.getElementById('sp-book-mode-wrapper');
+  const rawHTML = viewer ? viewer.innerHTML : '';
+  if (!rawHTML.trim()) {
+    // Content not ready - show scroll view and wait
+    if (scrollV) scrollV.style.display = '';
+    return;
+  }
+  spBookModeActive = true;
+  _spBookRawHTML  = rawHTML;
+  if (scrollV) scrollV.style.display = 'none';
+  if (wrapper) wrapper.classList.add('active');
+  _spFitAboveNav();
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (!spSplitModeActive) { _spDeactivateBook(); return; } // turned off during async
+    _spFitAboveNav();
+    const ca = document.getElementById('sp-book-left-content-area');
+    if (!ca) return;
+    const cs = window.getComputedStyle(ca);
+    let pH = ca.clientHeight - (parseFloat(cs.paddingTop)||0) - (parseFloat(cs.paddingBottom)||0);
+    if (pH <= 20) pH = window.innerHeight - 120; // safe fallback
+    _spProbeWidth = ca.clientWidth - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0);
     _spSyncProbe();
-    spBookPages=[]; spBookCurrentSpread=0;
-    spBookPages=_spPaginate(rawHTML,pH);
+    spBookPages = []; spBookCurrentSpread = 0;
+    spBookPages = _spPaginate(rawHTML, pH);
     _spShowSpread();
   }));
 }
+
 function _spShowSpread() {
   const total=spBookPages.length, li=spBookCurrentSpread, ri=li+1;
   const lEl=document.getElementById('sp-book-left-content');
@@ -4119,12 +4164,20 @@ function spBookChangePage(dir) {
   spBookCurrentSpread=next;_spShowSpread();
 }
 function _spDeactivateBook() {
-  if(!spBookModeActive)return;
-  spBookModeActive=false;spBookPages=[];
-  const scrollV=document.getElementById('sp-reader-scroll-view');
-  const wrapper=document.getElementById('sp-book-mode-wrapper');
-  if(scrollV)scrollV.style.display='';
-  if(wrapper)wrapper.classList.remove('active');
+  spBookModeActive = false; spBookPages = [];
+  const scrollV = document.getElementById('sp-reader-scroll-view');
+  const wrapper = document.getElementById('sp-book-mode-wrapper');
+  const viewer  = document.getElementById('sp-render-markdown');
+  if (wrapper) wrapper.classList.remove('active');
+  if (scrollV) scrollV.style.display = '';
+  // Restore viewer content from _spRenderedHTML if viewer is empty
+  if (viewer && !viewer.innerHTML.trim() && _spRenderedHTML) {
+    viewer.innerHTML = _spRenderedHTML;
+    // Re-setup selection since we re-inserted HTML
+    const chId = activeChapterId || '';
+    viewer._spSelSetup = false;
+    _spSetupSelection(viewer, chId);
+  }
 }
 function _spRepaginate() {
   if(!spBookModeActive||!_spBookRawHTML)return;
@@ -4736,33 +4789,6 @@ function spOpenMobileTools(e) {
 }
 
 
-// ── Mobile layout: dynamically fit content above navbar ───────────────
-function _spFitAboveNav() {
-  const nav = document.getElementById('reader-mobile-nav');
-  const contentArea = document.getElementById('reader-content-area');
-  if (!nav || !contentArea) return;
-
-  const navVisible = window.getComputedStyle(nav).display !== 'none';
-  if (!navVisible) {
-    // Desktop: reset everything
-    contentArea.style.height = '';
-    contentArea.style.maxHeight = '';
-    return;
-  }
-
-  // Mobile: measure actual navbar top edge = where content must stop
-  const navRect = nav.getBoundingClientRect();
-  const availH = navRect.top; // pixels from top of viewport to navbar top
-  contentArea.style.height = availH + 'px';
-  contentArea.style.maxHeight = availH + 'px';
-}
-
-// Run on load + on resize + on scroll (address bar show/hide changes viewport)
-window.addEventListener('resize', _spFitAboveNav);
-window.addEventListener('scroll', _spFitAboveNav, {passive:true});
-document.addEventListener('DOMContentLoaded', _spFitAboveNav);
-setTimeout(_spFitAboveNav, 200);
-setTimeout(_spFitAboveNav, 800);
 // ── Note popup (toolbar button) ────────────
 let _spNoteTarget = null;
 function spOpenNotePopup() {
@@ -5817,44 +5843,14 @@ function showToast(msg, duration = 2500) {
 </div>
 
 <script>
-// ── Mobile: keep book wrapper flush above navbar using position:fixed ──
+// ── Mobile: dynamically fit content area above navbar ──────────────
+// _spFitAboveNav already handles reader-content-area height
+// We just need to call it on viewport changes (address bar show/hide etc.)
 (function _spFixMobileLayout() {
-  const nav = document.getElementById('reader-mobile-nav');
-  const bw  = document.getElementById('sp-book-mode-wrapper');
-  if (!nav || !bw) return;
-
-  function adjust() {
-    if (window.innerWidth >= 1024) {
-      // Desktop: restore normal absolute positioning
-      bw.style.position = '';
-      bw.style.top = '';
-      bw.style.left = '';
-      bw.style.right = '';
-      bw.style.bottom = '';
-      return;
-    }
-    // Mobile: fix to viewport, stop exactly where navbar starts
-    const navRect = nav.getBoundingClientRect();
-    const tabBar  = document.getElementById('reader-tab-bar');
-    const tabH    = tabBar ? tabBar.getBoundingClientRect().bottom : 0;
-    bw.style.position = 'fixed';
-    bw.style.top      = tabH + 'px';
-    bw.style.left     = (document.getElementById('reader-content-area')?.getBoundingClientRect().left || 0) + 'px';
-    bw.style.right    = '0';
-    bw.style.bottom   = (window.innerHeight - navRect.top) + 'px';
-    bw.style.zIndex   = '10';
-  }
-
-  adjust();
-  window.addEventListener('resize', adjust);
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', adjust);
-    window.visualViewport.addEventListener('scroll', adjust);
+    window.visualViewport.addEventListener('resize', _spFitAboveNav);
+    window.visualViewport.addEventListener('scroll', _spFitAboveNav);
   }
-
-  // Re-adjust whenever book mode activates
-  const observer = new MutationObserver(adjust);
-  observer.observe(bw, { attributes: true, attributeFilter: ['class'] });
 })();
 </script>
 </body>
