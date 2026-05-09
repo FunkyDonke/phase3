@@ -3091,7 +3091,16 @@ function switchTab(tabId, updateHash = true) {
   if (updateHash) updateReaderHash();
 
   // Phase 3 — ডিজিটাল পাঠ
-  if (tabId === 'text') spRenderTextTab();
+  if (tabId === 'text') {
+    if (spSplitModeActive && _spRenderedHTML && activeChapterId) {
+      // book mode চালু + content আছে → spread preserve করে re-activate
+      _spBookResetSpread = false;
+      spBookModeActive = false; spBookPages = [];
+      _spActivateBook();
+    } else {
+      spRenderTextTab();
+    }
+  }
 }
 
 // ── Sidebar ───────────────────────────────
@@ -3300,6 +3309,17 @@ function toggleAccordion(chId) {
 // ── Select Chapter ────────────────────────
 function selectChapter(chId, scroll = true) {
   endStudySession();
+
+  // আগের chapter-এর reading position save করো
+  if (activeChapterId && currentSubject) {
+    const scrollV = document.getElementById('sp-reader-scroll-view');
+    if (spBookModeActive) {
+      localStorage.setItem(`sp_spread_${currentClass}_${currentSubject.id}_${activeChapterId}`, spBookCurrentSpread);
+    } else {
+      _spSaveScrollPosition(activeChapterId, scrollV);
+    }
+  }
+
   activeChapterId = chId;
 
   // Save last chapter
@@ -3745,6 +3765,8 @@ let spBookModeActive    = false;
 let spBookPages         = [];
 let spBookCurrentSpread = 0;
 let _spBookRawHTML      = '';
+let _spBookResetSpread  = false;
+let _spActivateToken    = 0;
 let _spProbeWidth       = 0;
 let _spProbeFontSize    = '';
 let _spProbeLH          = '';
@@ -3817,12 +3839,14 @@ function spRenderTextTab() {
   if (node.content.text && node.content.text.trim()) {
     _spUpdateWordCount(node.content.text);
   }
-  spBookModeActive = false; spBookPages = [];
+  spBookModeActive = false; spBookPages = []; spBookCurrentSpread = 0; _spBookResetSpread = true;
   if (wrapper) { wrapper.classList.remove('active'); }
-  if (scrollV) { scrollV.style.display = spSplitModeActive ? 'none' : ''; }  // keep hidden if book mode on
+  if (scrollV) { scrollV.style.display = spSplitModeActive ? 'none' : ''; }
   if (viewer) viewer.innerHTML = '';
   _spTtsStop();
   _spUpdateSplitBadge();
+  // Scroll save listener একবারই setup করো
+  _spSetupScrollSave(activeChapterId, scrollV);
 
   const chId = node.id;
 
@@ -3871,7 +3895,7 @@ function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, c
   let html;
   if(text.startsWith('<!-- sp-html-v1 -->')) {
     html = text.replace('<!-- sp-html-v1 -->', '').trimStart();
-    _spRenderedMdText = text; // keep for TTS/focus (markdown-like)
+    _spRenderedMdText = text;
   } else {
     html = _spParse(text);
     _spRenderedMdText = text;
@@ -3884,23 +3908,23 @@ function _spDoRender(text, viewer, scrollV, wrapper, infoBar, emptyEl, loader, c
       h.id = 'sp-heading-' + i;
       h.style.scrollMarginTop = '70px';
     });
-    // Only reapply highlights from localStorage when NOT sp-html-v1
-    // (sp-html-v1 already has spans embedded in the HTML)
     if(!text.startsWith('<!-- sp-html-v1 -->')) {
       _spReapplyHighlights(viewer, chId);
     }
     viewer._spSelSetup = false;
     _spSetupSelection(viewer, chId);
-    _spMakeImgsDeleteable(viewer);
+    if (typeof _spMakeImgsDeleteable === 'function') _spMakeImgsDeleteable(viewer);
   }
   if (scrollV) scrollV.style.display = spSplitModeActive ? 'none' : '';
   if (emptyEl) emptyEl.style.display = 'none';
-  if (spSplitModeActive) { _spFitAboveNav(); _spActivateBook(); }
   _spBuildMiniToc(viewer);
-  // Re-render sidebar so mini-toc appears nested under active chapter
-  if(typeof renderChapters === 'function') renderChapters();
-  // Update word count using the rendered text
   _spUpdateWordCount(text);
+  if (spSplitModeActive) {
+    _spFitAboveNav(); _spActivateBook();
+  } else {
+    // Scroll mode — saved position restore করো
+    _spRestoreScrollPosition(chId, scrollV);
+  }
 }
 
 // ── Markdown parse ─────────────────────────
@@ -4096,36 +4120,113 @@ window.addEventListener('scroll', _spFitAboveNav, {passive:true});
 document.addEventListener('DOMContentLoaded', _spFitAboveNav);
 setTimeout(_spFitAboveNav, 200);
 setTimeout(_spFitAboveNav, 800);
+
+// ── Scroll Position Save / Restore ────────
+let _spScrollSaveTimer = null;
+
+function _spScrollKey(chId) {
+  if (!chId || !currentSubject) return null;
+  return `sp_scroll_${currentClass}_${currentSubject.id}_${chId}`;
+}
+
+function _spSaveScrollPosition(chId, scrollV) {
+  const key = _spScrollKey(chId);
+  if (!key || !scrollV) return;
+  const ratio = scrollV.scrollHeight > scrollV.clientHeight
+    ? scrollV.scrollTop / (scrollV.scrollHeight - scrollV.clientHeight)
+    : 0;
+  localStorage.setItem(key, ratio.toFixed(4));
+}
+
+function _spRestoreScrollPosition(chId, scrollV) {
+  const key = _spScrollKey(chId);
+  if (!key || !scrollV) return;
+  const saved = parseFloat(localStorage.getItem(key) || '0');
+  if (saved <= 0) return;
+  // Content render হওয়ার পর restore করো
+  requestAnimationFrame(() => {
+    const maxScroll = scrollV.scrollHeight - scrollV.clientHeight;
+    if (maxScroll > 0) {
+      scrollV.scrollTop = saved * maxScroll;
+    }
+  });
+}
+
+function _spSetupScrollSave(chId, scrollV) {
+  if (!scrollV || scrollV._spScrollSaveSetup) return;
+  scrollV._spScrollSaveSetup = true;
+  scrollV.addEventListener('scroll', () => {
+    if (spSplitModeActive) return;
+    clearTimeout(_spScrollSaveTimer);
+    _spScrollSaveTimer = setTimeout(() => {
+      if (activeChapterId) _spSaveScrollPosition(activeChapterId, scrollV);
+    }, 300);
+  }, { passive: true });
+}
+
 function _spActivateBook() {
-  if (!spSplitModeActive) return; // guard: only run if book mode is actually on
-  const viewer  = document.getElementById('sp-render-markdown');
+  if (!spSplitModeActive) return;
   const scrollV = document.getElementById('sp-reader-scroll-view');
   const wrapper = document.getElementById('sp-book-mode-wrapper');
-  const rawHTML = viewer ? viewer.innerHTML : '';
-  if (!rawHTML.trim()) {
-    // Content not ready - show scroll view and wait
+  const rawHTML = _spRenderedHTML;
+  if (!rawHTML || !rawHTML.trim()) {
     if (scrollV) scrollV.style.display = '';
     return;
   }
+  const token = ++_spActivateToken;
+
   spBookModeActive = true;
   _spBookRawHTML  = rawHTML;
   if (scrollV) scrollV.style.display = 'none';
   if (wrapper) wrapper.classList.add('active');
-  _spFitAboveNav();
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (!spSplitModeActive) { _spDeactivateBook(); return; } // turned off during async
-    _spFitAboveNav();
-    const ca = document.getElementById('sp-book-left-content-area');
-    if (!ca) return;
-    const cs = window.getComputedStyle(ca);
-    let pH = ca.clientHeight - (parseFloat(cs.paddingTop)||0) - (parseFloat(cs.paddingBottom)||0);
-    if (pH <= 20) pH = window.innerHeight - 120; // safe fallback
-    _spProbeWidth = ca.clientWidth - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0);
+
+  requestAnimationFrame(() => {
+    if (token !== _spActivateToken) return;
+    if (!spSplitModeActive) { _spDeactivateBook(); return; }
+
+    const ca      = document.getElementById('sp-book-left-content-area');
+    const body    = document.getElementById('sp-content-body');
+    const toolbar = document.getElementById('sp-reader-toolbar');
+
+    let pH = 0, pW = 0;
+
+    // সবার আগে ca থেকে নেওয়ার চেষ্টা করো
+    if (ca && ca.clientHeight > 50) {
+      const cs = window.getComputedStyle(ca);
+      pH = ca.clientHeight - (parseFloat(cs.paddingTop)||0) - (parseFloat(cs.paddingBottom)||0);
+      pW = ca.clientWidth  - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0);
+    }
+
+    // ca না দিলে body থেকে নাও
+    if (pH <= 50 && body) {
+      pH = body.clientHeight - (toolbar ? toolbar.offsetHeight : 0) - 32;
+      pW = body.clientWidth - 32;
+    }
+
+    // শেষ fallback
+    if (pH <= 50) pH = window.innerHeight - 200;
+    if (pW <= 50) pW = window.innerWidth - 64;
+
+    _spProbeWidth = pW;
     _spSyncProbe();
-    spBookPages = []; spBookCurrentSpread = 0;
+
+    if (_spBookResetSpread) {
+      // নতুন chapter — আগের saved position আছে কিনা দেখো
+      const savedKey = currentSubject
+        ? `sp_spread_${currentClass}_${currentSubject.id}_${activeChapterId}`
+        : null;
+      const saved = savedKey ? parseInt(localStorage.getItem(savedKey) || '0', 10) : 0;
+      spBookCurrentSpread = (saved > 0) ? saved : 0;
+      _spBookResetSpread = false;
+    }
     spBookPages = _spPaginate(rawHTML, pH);
+
+    const step = window.innerWidth <= 640 ? 1 : 2;
+    if (spBookCurrentSpread >= spBookPages.length) spBookCurrentSpread = Math.max(0, spBookPages.length - step);
+    if (step === 2 && spBookCurrentSpread % 2 !== 0) spBookCurrentSpread--;
+
     _spShowSpread();
-  }));
+  });
 }
 
 function _spShowSpread() {
@@ -4158,7 +4259,12 @@ function spBookChangePage(dir) {
   const step=window.innerWidth<=640?1:2;
   const next=spBookCurrentSpread+dir*step;
   if(next<0||next>=spBookPages.length)return;
-  spBookCurrentSpread=next;_spShowSpread();
+  spBookCurrentSpread=next;
+  // reading position save করো
+  if (activeChapterId && currentSubject) {
+    localStorage.setItem(`sp_spread_${currentClass}_${currentSubject.id}_${activeChapterId}`, spBookCurrentSpread);
+  }
+  _spShowSpread();
 }
 function _spDeactivateBook() {
   spBookModeActive = false; spBookPages = [];
@@ -4199,8 +4305,7 @@ function spToggleSplitMode() {
   localStorage.setItem('sp_splitMode',String(spSplitModeActive));
   _spUpdateSplitBadge();
   if(spSplitModeActive){
-    const viewer=document.getElementById('sp-render-markdown');
-    if(viewer&&viewer.innerHTML.trim())_spActivateBook(); else _spShowBlankBook();
+    if(_spRenderedHTML && _spRenderedHTML.trim()) _spActivateBook(); else _spShowBlankBook();
   }else _spDeactivateBook();
 }
 function _spUpdateSplitBadge() {
