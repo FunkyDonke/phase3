@@ -1868,10 +1868,10 @@
 <div id="sp-hl-bar">
   <!-- Row 1: Highlight colors + erase -->
   <div class="sp-hl-row1">
-    <div class="sp-hl-dot" style="background:rgba(251,191,36,.85);border-color:#fbbf24" onclick="spApplyHighlight('yellow')" title="হলুদ হাইলাইট"></div>
-    <div class="sp-hl-dot" style="background:rgba(52,211,153,.85);border-color:#34d399"  onclick="spApplyHighlight('green')"  title="সবুজ হাইলাইট"></div>
-    <div class="sp-hl-dot" style="background:rgba(96,165,250,.85);border-color:#60a5fa"  onclick="spApplyHighlight('blue')"   title="নীল হাইলাইট"></div>
-    <div class="sp-hl-dot" style="background:rgba(251,113,133,.85);border-color:#fb7185" onclick="spApplyHighlight('pink')"   title="গোলাপি হাইলাইট"></div>
+    <div class="sp-hl-dot" style="background:rgba(251,191,36,.85);border-color:#fbbf24" onmousedown="event.preventDefault();spApplyHighlight('yellow')" title="হলুদ হাইলাইট"></div>
+    <div class="sp-hl-dot" style="background:rgba(52,211,153,.85);border-color:#34d399"  onmousedown="event.preventDefault();spApplyHighlight('green')"  title="সবুজ হাইলাইট"></div>
+    <div class="sp-hl-dot" style="background:rgba(96,165,250,.85);border-color:#60a5fa"  onmousedown="event.preventDefault();spApplyHighlight('blue')"   title="নীল হাইলাইট"></div>
+    <div class="sp-hl-dot" style="background:rgba(251,113,133,.85);border-color:#fb7185" onmousedown="event.preventDefault();spApplyHighlight('pink')"   title="গোলাপি হাইলাইট"></div>
     <input type="color" id="sp-hl-custom-color" value="#a78bfa" title="কাস্টম হাইলাইট রঙ"
       style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);padding:0;cursor:pointer;background:none"
       oninput="spApplyHighlight('custom',this.value)">
@@ -3312,11 +3312,16 @@ function selectChapter(chId, scroll = true) {
 
   // আগের chapter-এর reading position save করো
   if (activeChapterId && currentSubject) {
-    const scrollV = document.getElementById('sp-reader-scroll-view');
     if (spBookModeActive) {
-      localStorage.setItem(`sp_spread_${currentClass}_${currentSubject.id}_${activeChapterId}`, spBookCurrentSpread);
+      const anchor = _spGetBookAnchor();
+      if (anchor) _spSaveAnchor(activeChapterId, anchor);
     } else {
-      _spSaveScrollPosition(activeChapterId, scrollV);
+      const scrollV = document.getElementById('sp-reader-scroll-view');
+      const anchor = _spGetScrollAnchor(scrollV);
+      const maxScroll = scrollV ? scrollV.scrollHeight - scrollV.clientHeight : 0;
+      const ratio = (scrollV && maxScroll > 0) ? scrollV.scrollTop / maxScroll : 0;
+      const key = _spScrollKey(activeChapterId);
+      if (key) localStorage.setItem(key, JSON.stringify({ anchor, ratio }));
     }
   }
 
@@ -4121,7 +4126,10 @@ document.addEventListener('DOMContentLoaded', _spFitAboveNav);
 setTimeout(_spFitAboveNav, 200);
 setTimeout(_spFitAboveNav, 800);
 
-// ── Scroll Position Save / Restore ────────
+// ── Universal Reading Position (Anchor-based) ──
+// Book mode বা scroll mode — উভয়ই একই anchor সেভ করে
+// Anchor = বর্তমান দৃশ্যমান content-এর প্রথম block element-এর text শুরু
+
 let _spScrollSaveTimer = null;
 
 function _spScrollKey(chId) {
@@ -4129,27 +4137,93 @@ function _spScrollKey(chId) {
   return `sp_scroll_${currentClass}_${currentSubject.id}_${chId}`;
 }
 
-function _spSaveScrollPosition(chId, scrollV) {
-  const key = _spScrollKey(chId);
-  if (!key || !scrollV) return;
-  const ratio = scrollV.scrollHeight > scrollV.clientHeight
-    ? scrollV.scrollTop / (scrollV.scrollHeight - scrollV.clientHeight)
-    : 0;
-  localStorage.setItem(key, ratio.toFixed(4));
+// Scroll mode: দৃশ্যমান প্রথম element-এর text anchor বানাও
+function _spGetScrollAnchor(scrollV) {
+  if (!scrollV) return null;
+  const viewer = document.getElementById('sp-render-markdown');
+  if (!viewer) return null;
+  // scrollV-এর top থেকে কতটুকু scroll হয়েছে সেটা দিয়ে visible range বের করো
+  const scrollTop = scrollV.scrollTop;
+  const viewerTop = viewer.offsetTop || 0;
+  const blocks = viewer.querySelectorAll('p,h1,h2,h3,h4,li,blockquote');
+  for (const el of blocks) {
+    // el এর scrollV-relative top position
+    const elTop = el.offsetTop + viewerTop;
+    if (elTop >= scrollTop - 10) {
+      const txt = el.textContent.trim().slice(0, 80);
+      if (txt) return txt;
+    }
+  }
+  return null;
 }
 
+// Book mode: current page-এর প্রথম block element-এর text anchor বানাও
+function _spGetBookAnchor() {
+  const lEl = document.getElementById('sp-book-left-content');
+  if (!lEl) return null;
+  const blocks = lEl.querySelectorAll('p,h1,h2,h3,h4,li,blockquote');
+  for (const el of blocks) {
+    const txt = el.textContent.trim().slice(0, 80);
+    if (txt) return txt;
+  }
+  return null;
+}
+
+// Anchor সেভ করো
+function _spSaveAnchor(chId, anchor) {
+  const key = _spScrollKey(chId);
+  if (!key || !anchor) return;
+  localStorage.setItem(key, JSON.stringify({ anchor }));
+}
+
+// Scroll mode: anchor থেকে scroll position restore করো
 function _spRestoreScrollPosition(chId, scrollV) {
   const key = _spScrollKey(chId);
   if (!key || !scrollV) return;
-  const saved = parseFloat(localStorage.getItem(key) || '0');
-  if (saved <= 0) return;
-  // Content render হওয়ার পর restore করো
+  let data;
+  try { data = JSON.parse(localStorage.getItem(key) || 'null'); } catch { return; }
+  if (!data || !data.anchor) return;
+
   requestAnimationFrame(() => {
-    const maxScroll = scrollV.scrollHeight - scrollV.clientHeight;
-    if (maxScroll > 0) {
-      scrollV.scrollTop = saved * maxScroll;
+    const viewer = document.getElementById('sp-render-markdown');
+    if (!viewer) return;
+    const blocks = viewer.querySelectorAll('p,h1,h2,h3,h4,li,blockquote');
+    for (const el of blocks) {
+      if (el.textContent.trim().startsWith(data.anchor.slice(0, 40))) {
+        el.scrollIntoView({ block: 'start' });
+        return;
+      }
+    }
+    // Exact match না পেলে ratio fallback (backward compat)
+    if (data.ratio != null) {
+      const maxScroll = scrollV.scrollHeight - scrollV.clientHeight;
+      if (maxScroll > 0) scrollV.scrollTop = data.ratio * maxScroll;
     }
   });
+}
+
+// Book mode: anchor থেকে সঠিক page খুঁজে বের করো
+function _spRestoreBookFromAnchor(chId) {
+  const key = _spScrollKey(chId);
+  if (!key) return false;
+  let data;
+  try { data = JSON.parse(localStorage.getItem(key) || 'null'); } catch { return false; }
+  if (!data || !data.anchor) return false;
+
+  const searchText = data.anchor.slice(0, 40);
+  for (let i = 0; i < spBookPages.length; i++) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = spBookPages[i];
+    const blocks = tmp.querySelectorAll('p,h1,h2,h3,h4,li,blockquote');
+    for (const el of blocks) {
+      if (el.textContent.trim().startsWith(searchText)) {
+        const step = window.innerWidth <= 640 ? 1 : 2;
+        spBookCurrentSpread = (step === 2 && i % 2 !== 0) ? i - 1 : i;
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function _spSetupScrollSave(chId, scrollV) {
@@ -4159,7 +4233,12 @@ function _spSetupScrollSave(chId, scrollV) {
     if (spSplitModeActive) return;
     clearTimeout(_spScrollSaveTimer);
     _spScrollSaveTimer = setTimeout(() => {
-      if (activeChapterId) _spSaveScrollPosition(activeChapterId, scrollV);
+      if (!activeChapterId) return;
+      const anchor = _spGetScrollAnchor(scrollV);
+      const maxScroll = scrollV.scrollHeight - scrollV.clientHeight;
+      const ratio = maxScroll > 0 ? scrollV.scrollTop / maxScroll : 0;
+      const key = _spScrollKey(activeChapterId);
+      if (key) localStorage.setItem(key, JSON.stringify({ anchor, ratio }));
     }, 300);
   }, { passive: true });
 }
@@ -4210,18 +4289,21 @@ function _spActivateBook() {
     _spProbeWidth = pW;
     _spSyncProbe();
 
-    if (_spBookResetSpread) {
-      // নতুন chapter — আগের saved position আছে কিনা দেখো
-      const savedKey = currentSubject
-        ? `sp_spread_${currentClass}_${currentSubject.id}_${activeChapterId}`
-        : null;
-      const saved = savedKey ? parseInt(localStorage.getItem(savedKey) || '0', 10) : 0;
-      spBookCurrentSpread = (saved > 0) ? saved : 0;
-      _spBookResetSpread = false;
-    }
+    // আগে paginate করো — তারপর anchor দিয়ে সঠিক page খোঁজো
     spBookPages = _spPaginate(rawHTML, pH);
 
     const step = window.innerWidth <= 640 ? 1 : 2;
+
+    if (_spBookResetSpread) {
+      _spBookResetSpread = false;
+      // নতুন chapter বা mode toggle — anchor থেকে page খোঁজো
+      const found = _spRestoreBookFromAnchor(activeChapterId);
+      if (!found) spBookCurrentSpread = 0;
+    } else {
+      // Tab switch — scroll anchor থেকে page খোঁজো
+      _spRestoreBookFromAnchor(activeChapterId);
+    }
+
     if (spBookCurrentSpread >= spBookPages.length) spBookCurrentSpread = Math.max(0, spBookPages.length - step);
     if (step === 2 && spBookCurrentSpread % 2 !== 0) spBookCurrentSpread--;
 
@@ -4241,7 +4323,11 @@ function _spShowSpread() {
   const rNum=document.getElementById('sp-book-right-num');
   if(lNum) lNum.textContent=`— ${li+1} / ${total} —`;
   if(rNum) rNum.textContent=(!mob&&ri<total)?`— ${ri+1} / ${total} —`:'';
-  // Setup selection + highlights on newly rendered book pages
+  // Book anchor save করো — এই page-এর প্রথম visible text
+  requestAnimationFrame(() => {
+    const anchor = _spGetBookAnchor();
+    if (anchor && activeChapterId) _spSaveAnchor(activeChapterId, anchor);
+  });
   setTimeout(()=>_spSetupBookSelection(),50);
 }
 function _spShowBlankBook() {
@@ -4260,26 +4346,31 @@ function spBookChangePage(dir) {
   const next=spBookCurrentSpread+dir*step;
   if(next<0||next>=spBookPages.length)return;
   spBookCurrentSpread=next;
-  // reading position save করো
-  if (activeChapterId && currentSubject) {
-    localStorage.setItem(`sp_spread_${currentClass}_${currentSubject.id}_${activeChapterId}`, spBookCurrentSpread);
-  }
   _spShowSpread();
+  // anchor save হবে _spShowSpread এর rAF-এ
 }
 function _spDeactivateBook() {
+  // বন্ধ করার আগে এই মুহূর্তের book anchor সাথে সাথে save করো
+  if (activeChapterId) {
+    const anchor = _spGetBookAnchor();
+    if (anchor) _spSaveAnchor(activeChapterId, anchor);
+  }
   spBookModeActive = false; spBookPages = [];
   const scrollV = document.getElementById('sp-reader-scroll-view');
   const wrapper = document.getElementById('sp-book-mode-wrapper');
   const viewer  = document.getElementById('sp-render-markdown');
   if (wrapper) wrapper.classList.remove('active');
   if (scrollV) scrollV.style.display = '';
-  // Restore viewer content from _spRenderedHTML if viewer is empty
+  // viewer content restore করো
   if (viewer && !viewer.innerHTML.trim() && _spRenderedHTML) {
     viewer.innerHTML = _spRenderedHTML;
-    // Re-setup selection since we re-inserted HTML
     const chId = activeChapterId || '';
     viewer._spSelSetup = false;
     _spSetupSelection(viewer, chId);
+  }
+  // Book mode-এর anchor থেকে scroll position restore করো
+  if (activeChapterId) {
+    _spRestoreScrollPosition(activeChapterId, scrollV);
   }
 }
 function _spRepaginate() {
@@ -4305,8 +4396,19 @@ function spToggleSplitMode() {
   localStorage.setItem('sp_splitMode',String(spSplitModeActive));
   _spUpdateSplitBadge();
   if(spSplitModeActive){
+    // Book mode চালু করার আগে এই মুহূর্তের scroll position সাথে সাথে save করো
+    if (!spBookModeActive && activeChapterId) {
+      const scrollV = document.getElementById('sp-reader-scroll-view');
+      const anchor = _spGetScrollAnchor(scrollV);
+      const maxScroll = scrollV ? scrollV.scrollHeight - scrollV.clientHeight : 0;
+      const ratio = (scrollV && maxScroll > 0) ? scrollV.scrollTop / maxScroll : 0;
+      const key = _spScrollKey(activeChapterId);
+      if (key) localStorage.setItem(key, JSON.stringify({ anchor, ratio }));
+    }
     if(_spRenderedHTML && _spRenderedHTML.trim()) _spActivateBook(); else _spShowBlankBook();
-  }else _spDeactivateBook();
+  } else {
+    _spDeactivateBook();
+  }
 }
 function _spUpdateSplitBadge() {
   const badge=document.getElementById('sp-split-badge');
@@ -4718,6 +4820,68 @@ function _spSetupSelection(container, chId) {
 }
 
 
+function _spSetupBookSelection() {
+  // book page content replace হওয়ার পরে প্রতিবার call হয়
+  // sp-book-left-content এবং sp-book-right-content এ listener লাগাও
+  ['sp-book-left-content', 'sp-book-right-content'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    // innerHTML replace হয় প্রতি page change-এ তাই _spSelSetup flag রাখা যাবে না
+    // parent wrapper-এ একবার লাগাও
+    const wrapper = el.parentElement;
+    if (!wrapper || wrapper._spBookSelSetup) return;
+    wrapper._spBookSelSetup = true;
+
+    const onSelEnd = (delay) => setTimeout(() => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
+      try {
+        const range = sel.getRangeAt(0);
+        if (!wrapper.contains(range.commonAncestorContainer)) return;
+        _spCurrentSel = { range: range.cloneRange(), chId: activeChapterId, container: wrapper };
+        _spLastHlGroupId = null;
+        _spShowHlBarBook(range);
+      } catch(e) {}
+    }, delay);
+
+    wrapper.addEventListener('mouseup',  () => onSelEnd(10));
+    wrapper.addEventListener('touchend', () => onSelEnd(160));
+
+    wrapper.addEventListener('mousedown', e => {
+      const hlSpan = e.target.closest('[data-hl-id]');
+      const styled = !hlSpan && e.target.closest('strong,em,u,s,b,i,span[style]');
+      if (!hlSpan && !styled) return;
+      e.stopPropagation();
+      const target = hlSpan || styled;
+      const range = document.createRange();
+      range.selectNodeContents(target);
+      _spCurrentSel = { range: range.cloneRange(), chId: activeChapterId, container: wrapper };
+      _spLastHlGroupId = hlSpan ? hlSpan.dataset.hlId : null;
+      requestAnimationFrame(() => {
+        if (hlSpan) _spShowHlOptions(hlSpan, activeChapterId);
+        _spShowHlBarBook({ getBoundingClientRect: () => target.getBoundingClientRect() });
+      });
+    });
+  });
+}
+
+// Book mode-এ bar position — window.scrollY না, viewport coordinate ব্যবহার করো
+function _spShowHlBarBook(range) {
+  const bar = document.getElementById('sp-hl-bar');
+  if (!bar) return;
+  const rect = typeof range.getBoundingClientRect === 'function'
+    ? range.getBoundingClientRect()
+    : range.getBoundingClientRect();
+  let left = rect.left + rect.width / 2 - 160;
+  // Book mode: fixed positioning, scrollY নেই
+  let top = (rect.top < 180) ? rect.bottom + 8 : rect.top - 175;
+  left = Math.max(6, Math.min(left, window.innerWidth - 330));
+  top  = Math.max(6, top);
+  bar.style.position = 'fixed';
+  bar.style.left = left + 'px';
+  bar.style.top  = top + 'px';
+  bar.classList.add('show');
+}
 function _spShowHlBar(range) {
   const bar = document.getElementById('sp-hl-bar');
   if(!bar) return;
@@ -4725,6 +4889,7 @@ function _spShowHlBar(range) {
   let left = rect.left + rect.width / 2 - 160;
   let top  = (rect.top < 180) ? rect.bottom + window.scrollY + 8 : rect.top - 175 + window.scrollY;
   left = Math.max(6, Math.min(left, window.innerWidth - 330));
+  bar.style.position = 'absolute';
   bar.style.left = left + 'px';
   bar.style.top  = top + 'px';
   bar.classList.add('show');
@@ -4761,7 +4926,6 @@ function spApplyHighlight(color, customHex) {
   const text = range.toString().trim();
   if(!text) { showToast('টেক্সট সিলেক্ট করুন'); return; }
 
-  // Use ONE group ID for all text nodes in this selection
   const groupId = 'hl_' + Date.now();
 
   _spWrapRangeNodes(range, node => {
@@ -4773,7 +4937,7 @@ function spApplyHighlight(color, customHex) {
     } else {
       span.className = 'sp-hl-' + color;
     }
-    span.dataset.hlId    = groupId;   // same ID for all spans in group
+    span.dataset.hlId    = groupId;
     span.dataset.hlGroup = groupId;
     span.dataset.color   = color;
     span.dataset.hlText  = node.textContent;
@@ -4781,38 +4945,70 @@ function spApplyHighlight(color, customHex) {
   });
 
   window.getSelection()?.removeAllRanges();
-  // Save to localStorage with groupId
   _spSaveHighlight(chId, groupId, text, color, customHex || '', '');
   _spLogEdit('হাইলাইট', text.substring(0,30) + (text.length>30?'…':''));
-  // Save DOM directly (don't use _spSaveData which overwrites viewer innerHTML)
-  _spSaveDOMToNode();
-  _spLastHlGroupId = groupId; // track so erase button works right after applying
+
+  if (spBookModeActive) {
+    _spSyncBookHighlightToViewer();
+  } else {
+    _spSaveDOMToNode();
+  }
+
+  _spLastHlGroupId = groupId;
   _spHideHlBar();
   _spCurrentSel = null;
   showToast('✅ হাইলাইট হয়েছে');
 }
 
+// Book mode-এ highlight apply হওয়ার পর সব pages merge করে viewer-এ sync করো
+function _spSyncBookHighlightToViewer() {
+  // বর্তমান page-এর updated HTML নিয়ে spBookPages আপডেট করো
+  const lEl = document.getElementById('sp-book-left-content');
+  const rEl = document.getElementById('sp-book-right-content');
+  const li   = spBookCurrentSpread;
+  const ri   = li + 1;
+
+  if (lEl && li < spBookPages.length) spBookPages[li] = lEl.innerHTML;
+  if (rEl && ri < spBookPages.length) spBookPages[ri] = rEl.innerHTML;
+
+  // সব pages join করে viewer-এ রাখো → _spSaveDOMToNode কাজ করবে
+  const viewer = document.getElementById('sp-render-markdown');
+  if (viewer) {
+    viewer.innerHTML = spBookPages.join('');
+    _spRenderedHTML  = viewer.innerHTML;
+  }
+  _spSaveDOMToNode();
+
+  // viewer clear হলে book display ঠিক রাখতে হবে — scroll hide করো
+  const scrollV = document.getElementById('sp-reader-scroll-view');
+  if (scrollV) scrollV.style.display = 'none';
+}
+
 // Walk text nodes within range and wrap each in a span returned by factory fn
 function _spWrapRangeNodes(range, spanFactory) {
-  // Collect all text nodes fully or partially in range
+  const ancestor = range.commonAncestorContainer;
   const nodes = [];
-  const walker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_TEXT, null);
-  let node;
-  while((node = walker.nextNode())) {
-    if(range.intersectsNode(node)) nodes.push(node);
+
+  // commonAncestorContainer নিজেই text node হলে সরাসরি নাও
+  if (ancestor.nodeType === Node.TEXT_NODE) {
+    nodes.push(ancestor);
+  } else {
+    const walker = document.createTreeWalker(ancestor, NodeFilter.SHOW_TEXT, null);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (range.intersectsNode(node)) nodes.push(node);
+    }
   }
+
   nodes.forEach(textNode => {
-    // Determine intersection with range
     const nodeStart = (textNode === range.startContainer) ? range.startOffset : 0;
     const nodeEnd   = (textNode === range.endContainer)   ? range.endOffset   : textNode.length;
-    if(nodeStart >= nodeEnd) return;
-    // Split the text node at boundaries
-    const mid = textNode.splitText(nodeStart);
+    if (nodeStart >= nodeEnd) return;
+    const mid   = textNode.splitText(nodeStart);
     const after = (nodeEnd - nodeStart < mid.length) ? mid.splitText(nodeEnd - nodeStart) : null;
-    const span = spanFactory(mid);
+    const span  = spanFactory(mid);
     mid.parentNode.insertBefore(span, mid);
     span.appendChild(mid);
-    // after stays in place
   });
 }
 
