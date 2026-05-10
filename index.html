@@ -4949,7 +4949,23 @@ function spApplyHighlight(color, customHex) {
   _spLogEdit('হাইলাইট', text.substring(0,30) + (text.length>30?'…':''));
 
   if (spBookModeActive) {
-    _spSyncBookHighlightToViewer();
+    // Book mode: viewer-এ content নেই, তাই node-এ directly save করো
+    const node = activeChapterId && currentSubject ? findNode(currentSubject.chapters, activeChapterId) : null;
+    if (node) {
+      if (!node.content) node.content = { text:'', textUrl:'', pdfs:[], videos:[], qna:[] };
+      // সব pages merge করে save করো
+      const lEl = document.getElementById('sp-book-left-content');
+      const rEl = document.getElementById('sp-book-right-content');
+      const li = spBookCurrentSpread, ri = li + 1;
+      if (lEl && li < spBookPages.length) spBookPages[li] = lEl.innerHTML;
+      if (rEl && ri < spBookPages.length) spBookPages[ri] = rEl.innerHTML;
+      _spRenderedHTML = spBookPages.join('');
+      node.content.text = '<!-- sp-html-v1 -->' + _spRenderedHTML;
+      node.content.textUrl = '';
+      _spRenderedMdText = node.content.text;
+      if (activeChapterId) _spFetchCache[activeChapterId] = node.content.text;
+      saveData();
+    }
   } else {
     _spSaveDOMToNode();
   }
@@ -4961,28 +4977,6 @@ function spApplyHighlight(color, customHex) {
 }
 
 // Book mode-এ highlight apply হওয়ার পর সব pages merge করে viewer-এ sync করো
-function _spSyncBookHighlightToViewer() {
-  // বর্তমান page-এর updated HTML নিয়ে spBookPages আপডেট করো
-  const lEl = document.getElementById('sp-book-left-content');
-  const rEl = document.getElementById('sp-book-right-content');
-  const li   = spBookCurrentSpread;
-  const ri   = li + 1;
-
-  if (lEl && li < spBookPages.length) spBookPages[li] = lEl.innerHTML;
-  if (rEl && ri < spBookPages.length) spBookPages[ri] = rEl.innerHTML;
-
-  // সব pages join করে viewer-এ রাখো → _spSaveDOMToNode কাজ করবে
-  const viewer = document.getElementById('sp-render-markdown');
-  if (viewer) {
-    viewer.innerHTML = spBookPages.join('');
-    _spRenderedHTML  = viewer.innerHTML;
-  }
-  _spSaveDOMToNode();
-
-  // viewer clear হলে book display ঠিক রাখতে হবে — scroll hide করো
-  const scrollV = document.getElementById('sp-reader-scroll-view');
-  if (scrollV) scrollV.style.display = 'none';
-}
 
 // Walk text nodes within range and wrap each in a span returned by factory fn
 function _spWrapRangeNodes(range, spanFactory) {
