@@ -3860,6 +3860,7 @@ let _spTtsActive        = false;
 let _spTtsSentences     = [];   // plain text sentences array
 let _spTtsCurIdx        = 0;    // current sentence index
 let _spTtsHighlightEl   = null; // currently highlighted element
+let _spTtsHighlightEls  = [];   // multiple marks for cross-element sentences
 
 // Rendered HTML cache (for focus mode, TTS plain text)
 let _spRenderedHTML   = '';   // last rendered HTML
@@ -4530,7 +4531,8 @@ function _spTtsStop() {
   if(typeof speechSynthesis!=='undefined') window.speechSynthesis.cancel();
   _spTtsActive=false;
   _spTtsPaused=false;
-  _spTtsHighlightSentence(-1);
+  _spTtsCleanupMarks();
+  _spTtsSentDomStart = null;
   const pill     = document.getElementById('sp-tts-pill');
   const btn      = document.getElementById('sp-tts-btn');
   const wave     = document.getElementById('sp-tts-wave');
@@ -4574,103 +4576,257 @@ function _spTtsSplitSentences(text) {
 }
 
 function _spTtsHighlightSentence(idx) {
-  // আগের highlight সরাও
-  if (_spTtsHighlightEl) {
-    if (_spTtsHighlightEl.tagName === 'MARK') {
-      const parent = _spTtsHighlightEl.parentNode;
-      if (parent) {
-        while (_spTtsHighlightEl.firstChild) parent.insertBefore(_spTtsHighlightEl.firstChild, _spTtsHighlightEl);
-        parent.removeChild(_spTtsHighlightEl);
-        parent.normalize();
-      }
+  // আগের highlights সরাও
+  (_spTtsHighlightEls || []).forEach(el => {
+    if (!el.parentNode) return;
+    if (el.tagName === 'MARK') {
+      const p = el.parentNode;
+      while (el.firstChild) p.insertBefore(el.firstChild, el);
+      p.removeChild(el); p.normalize();
     } else {
-      _spTtsHighlightEl.classList.remove('sp-tts-reading');
-      _spTtsHighlightEl.style.background = '';
+      el.classList.remove('sp-tts-reading');
+      el.style.background = '';
     }
-    _spTtsHighlightEl = null;
-  }
+  });
+  _spTtsHighlightEls = [];
+  _spTtsHighlightEl  = null;
   if (idx < 0) return;
+
   const sentence = _spTtsSentences[idx];
   if (!sentence || sentence.length < 2) return;
 
-  // আগের sentences-এর মোট character count বের করো
-  // এটা দিয়ে full text-এ কোথায় আছি সেটা জানবো
+  // আগের sentences এর join করা text
   const prevText = _spTtsSentences.slice(0, idx).join('');
-  const prevLen  = prevText.length;
 
-  const containers = [
-    document.getElementById(spBookModeActive ? 'sp-book-left-content' : 'sp-render-markdown'),
-    document.getElementById('sp-book-right-content'),
-  ].filter(Boolean);
+  // সব relevant container থেকে text nodes একসাথে নাও
+  const allTextNodes = [];
+  const containerIds = spBookModeActive
+    ? ['sp-book-left-content', 'sp-book-right-content']
+    : ['sp-render-markdown'];
 
-  for (const container of containers) {
-    if (!container) continue;
-    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
-    let node;
-    let charCount = 0; // container-এ এখন পর্যন্ত কত character পার হয়েছি
+  for (const cId of containerIds) {
+    const c = document.getElementById(cId);
+    if (!c) continue;
+    const w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT, null);
+    let n;
+    while ((n = w.nextNode())) allTextNodes.push(n);
+  }
 
-    while ((node = walker.nextNode())) {
-      const val = node.nodeValue || '';
-      const nodeEnd = charCount + val.length;
+  if (!allTextNodes.length) return;
 
-      // এই node-এ sentence শুরু হওয়ার কথা কিনা check করো
-      // prevLen এর কাছাকাছি বা পরে এই node আছে কিনা
-      if (nodeEnd > prevLen) {
-        // এই node-এ sentence-এর কিছু অংশ আছে
-        const searchStr = sentence.substring(0, Math.min(20, sentence.length));
-        const localOffset = Math.max(0, prevLen - charCount);
-        const foundAt = val.indexOf(searchStr, localOffset);
+  // সব text nodes join করে একটা full text বানাও
+  const fullText = allTextNodes.map(n => n.nodeValue).join('');
 
-        if (foundAt !== -1) {
-          try {
-            const range = document.createRange();
-            range.setStart(node, foundAt);
-            range.setEnd(node, Math.min(foundAt + sentence.length, val.length));
-            const mark = document.createElement('mark');
-            mark.className = 'sp-tts-reading';
-            mark.style.cssText = `background:${_spTtsHlColor};border-radius:2px;color:inherit;`;
-            range.surroundContents(mark);
-            _spTtsHighlightEl = mark;
-            mark.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          } catch(e) {
-            const el = node.parentElement;
-            if (el) {
-              el.classList.add('sp-tts-reading');
-              el.style.background = _spTtsHlColor;
-              _spTtsHighlightEl = el;
-              el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
+  // prevText এর শেষ অংশ দিয়ে exact start position বের করো
+  let searchFrom = 0;
+  if (prevText.length > 0) {
+    const tail = prevText.slice(-30);
+    const pos  = fullText.indexOf(tail);
+    if (pos !== -1) searchFrom = pos + tail.length;
+  }
+
+  const sentStart = fullText.indexOf(sentence.slice(0, 25), searchFrom);
+  if (sentStart === -1) return;
+  const sentEnd = sentStart + sentence.length;
+
+  // text nodes এ offset map করে mark বসাও
+  const marks = [];
+  let charPos = 0;
+
+  for (const tn of allTextNodes) {
+    const tnStart = charPos;
+    const tnEnd   = charPos + tn.nodeValue.length;
+
+    if (tnEnd > sentStart && tnStart < sentEnd) {
+      const localStart = Math.max(0, sentStart - tnStart);
+      const localEnd   = Math.min(tn.nodeValue.length, sentEnd - tnStart);
+      if (localStart < localEnd) {
+        try {
+          const range = document.createRange();
+          range.setStart(tn, localStart);
+          range.setEnd(tn, localEnd);
+          const mark = document.createElement('mark');
+          mark.className = 'sp-tts-reading';
+          mark.style.cssText = `background:${_spTtsHlColor};border-radius:2px;color:inherit;`;
+          range.surroundContents(mark);
+          marks.push(mark);
+        } catch(e) {
+          const el = tn.parentElement;
+          if (el && !marks.includes(el)) {
+            el.classList.add('sp-tts-reading');
+            el.style.background = _spTtsHlColor;
+            marks.push(el);
           }
-          return;
         }
       }
-      charCount += val.length;
     }
+    charPos = tnEnd;
+  }
+
+  if (marks.length) {
+    _spTtsHighlightEls = marks;
+    _spTtsHighlightEl  = marks[0];
+    marks[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
+
+let _spTtsSentDomStart = null;
 
 function _spTtsSpeakIdx(idx) {
   if(idx<0||idx>=_spTtsSentences.length){_spTtsStop();return;}
   window.speechSynthesis.cancel();
   _spTtsCurIdx=idx;
-  _spTtsHighlightSentence(idx);
-  const utt=new SpeechSynthesisUtterance(_spTtsSentences[idx]);
-  // Get voice
-  const getAndSpeak=()=>{
-    const voices=window.speechSynthesis.getVoices();
-    const bnVoice=voices.find(v=>v.lang.startsWith('bn')||v.lang.startsWith('hi'));
-    if(bnVoice)utt.voice=bnVoice;
-    const rateEl=document.getElementById('sp-tts-rate');
-    utt.rate = _spTtsCurrentRate || 0.92;
-    utt.pitch=1;
-    utt.onend=()=>{ if(_spTtsActive) setTimeout(()=>_spTtsSpeakIdx(_spTtsCurIdx+1),80); };
-    utt.onerror=(e)=>{ if(e.error!=='interrupted'&&_spTtsActive) setTimeout(()=>_spTtsSpeakIdx(_spTtsCurIdx+1),80); };
+
+  const text = _spTtsSentences[idx];
+  const utt  = new SpeechSynthesisUtterance(text);
+
+  const getAndSpeak = () => {
+    const voices = window.speechSynthesis.getVoices();
+    const bnVoice = voices.find(v=>v.lang.startsWith('bn')||v.lang.startsWith('hi'));
+    if (bnVoice) utt.voice = bnVoice;
+    utt.rate  = _spTtsCurrentRate || 0.92;
+    utt.pitch = 1;
+
+    utt.onstart = () => {
+      _spTtsSentDomStart = _spFindSentenceDomAnchor(idx);
+    };
+
+    utt.onboundary = (e) => {
+      if (e.name !== 'word') return;
+      _spTtsHighlightByDomAnchor(_spTtsSentDomStart, e.charIndex, e.charLength || 8);
+    };
+
+    utt.onend = () => {
+      if (_spTtsActive) setTimeout(() => _spTtsSpeakIdx(_spTtsCurIdx + 1), 60);
+    };
+    utt.onerror = (e) => {
+      if (e.error !== 'interrupted' && _spTtsActive)
+        setTimeout(() => _spTtsSpeakIdx(_spTtsCurIdx + 1), 60);
+    };
+
     window.speechSynthesis.speak(utt);
   };
-  if(window.speechSynthesis.getVoices().length>0) getAndSpeak();
-  else { window.speechSynthesis.onvoiceschanged=()=>{ window.speechSynthesis.onvoiceschanged=null; getAndSpeak(); }; getAndSpeak(); }
+
+  if (window.speechSynthesis.getVoices().length > 0) getAndSpeak();
+  else { window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.onvoiceschanged = null; getAndSpeak(); }; getAndSpeak(); }
 }
 
+function _spTtsCleanupMarks() {
+  (_spTtsHighlightEls || []).forEach(el => {
+    if (!el.parentNode) return;
+    if (el.tagName === 'MARK') {
+      const p = el.parentNode;
+      while (el.firstChild) p.insertBefore(el.firstChild, el);
+      p.removeChild(el);
+      // normalize করো না — text node split থাকলেও পরের search কাজ করে
+    } else {
+      el.classList.remove('sp-tts-reading');
+      el.style.background = '';
+    }
+  });
+  _spTtsHighlightEls = [];
+  _spTtsHighlightEl  = null;
+}
+
+function _spFindSentenceDomAnchor(sentIdx) {
+  const prevText  = _spTtsSentences.slice(0, sentIdx).join('');
+  const sentText  = _spTtsSentences[sentIdx] || '';
+  const searchStr = sentText.slice(0, 20);
+  const skipLen   = Math.max(0, prevText.length - 50);
+
+  const containerIds = spBookModeActive
+    ? ['sp-book-left-content', 'sp-book-right-content']
+    : ['sp-render-markdown'];
+
+  for (const cId of containerIds) {
+    const c = document.getElementById(cId);
+    if (!c) continue;
+    const walker = document.createTreeWalker(c, NodeFilter.SHOW_TEXT, null);
+    let cumLen = 0, node;
+    while ((node = walker.nextNode())) {
+      if (node.parentElement && node.parentElement.tagName === 'MARK') {
+        cumLen += node.nodeValue.length;
+        continue;
+      }
+      const val = node.nodeValue;
+      if (cumLen + val.length < skipLen) { cumLen += val.length; continue; }
+      const from = Math.max(0, skipLen - cumLen);
+      const pos  = val.indexOf(searchStr, from);
+      if (pos !== -1) return { node, offset: pos };
+      cumLen += val.length;
+    }
+  }
+  return null;
+}
+
+function _spTtsHighlightByDomAnchor(anchor, charIndex, charLen) {
+  // আগের marks সরাও — normalize ছাড়া
+  _spTtsCleanupMarks();
+  if (!anchor) return;
+
+  const containerIds = spBookModeActive
+    ? ['sp-book-left-content', 'sp-book-right-content']
+    : ['sp-render-markdown'];
+  const allNodes = [];
+  for (const cId of containerIds) {
+    const c = document.getElementById(cId);
+    if (!c) continue;
+    const w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT, null);
+    let n;
+    while ((n = w.nextNode())) {
+      if (n.parentElement && n.parentElement.tagName === 'MARK') continue;
+      allNodes.push(n);
+    }
+  }
+
+  const anchorIdx = allNodes.indexOf(anchor.node);
+  if (anchorIdx === -1) return;
+
+  let skip = anchor.offset + charIndex;
+  let startNode = null, startOff = 0;
+  for (let i = anchorIdx; i < allNodes.length; i++) {
+    const tn = allNodes[i];
+    if (skip <= tn.nodeValue.length) { startNode = tn; startOff = skip; break; }
+    skip -= tn.nodeValue.length;
+  }
+  if (!startNode) return;
+
+  const marks = [];
+  let lenLeft = charLen, started = false;
+  for (let i = anchorIdx; i < allNodes.length && lenLeft > 0; i++) {
+    const tn = allNodes[i];
+    if (!started && tn !== startNode) continue;
+    started = true;
+    const ls = (tn === startNode) ? startOff : 0;
+    const le = Math.min(tn.nodeValue.length, ls + lenLeft);
+    if (ls >= le) continue;
+    try {
+      const range = document.createRange();
+      range.setStart(tn, ls); range.setEnd(tn, le);
+      const mark = document.createElement('mark');
+      mark.className = 'sp-tts-reading';
+      mark.style.cssText = `background:${_spTtsHlColor};border-radius:2px;color:inherit;`;
+      range.surroundContents(mark);
+      marks.push(mark);
+      lenLeft -= (le - ls);
+    } catch(e) {
+      const el = tn.parentElement;
+      if (el && !marks.includes(el)) {
+        el.classList.add('sp-tts-reading'); el.style.background = _spTtsHlColor; marks.push(el);
+      }
+      lenLeft = 0;
+    }
+  }
+
+  if (marks.length) {
+    _spTtsHighlightEls = marks; _spTtsHighlightEl = marks[0];
+    marks[0].scrollIntoView({ behavior:'smooth', block:'nearest' });
+    if (spBookModeActive) {
+      const rect = marks[0].getBoundingClientRect();
+      if (rect.top < 60 || rect.bottom > window.innerHeight - 60) spBookChangePage(1);
+    }
+  }
+}
 function spToggleTTS() {
   if(_spTtsActive){ _spTtsStop(); return; }
   const raw=_spRenderedMdText;
