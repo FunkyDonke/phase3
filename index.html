@@ -839,7 +839,8 @@
   .sp-tb-sep { width:1px; height:16px; background:var(--border2); flex-shrink:0; margin:0 2px; }
 
   /* ── Info bar ── */
-  .sp-tts-reading { background:rgba(99,102,241,.15); border-radius:3px; transition:background .2s; }
+  .sp-tts-reading { background:rgba(251,191,36,.35); border-radius:3px; transition:background .2s; }
+  mark.sp-tts-reading { background:rgba(251,191,36,.35); border-radius:2px; color:inherit; }
   [data-note="true"]::after { content:"📝"; font-size:9px; vertical-align:super; margin-left:1px; }
   .sp-tts-wave { display:flex; align-items:center; gap:2px; height:18px; }
   .sp-tts-wave span { display:inline-block; width:3px; border-radius:99px; background:var(--accent); animation:spTtsWave .75s ease-in-out infinite; }
@@ -4567,41 +4568,83 @@ function spTtsPause() {
 }
 
 function _spTtsSplitSentences(text) {
-  // Split by sentence-ending punctuation including Bengali ।
-  const raw = text.split(/(?<=[।.!?])\s+|(?<=।)/);
-  return raw.map(s=>s.trim()).filter(s=>s.length>1);
+  // দাড়ি, পিরিয়ড, বিস্ময়, প্রশ্ন, কমা দিয়ে split করো
+  const raw = text.split(/(?<=[।.!?,;،،])\s*/);
+  return raw.map(s => s.trim()).filter(s => s.length > 1);
 }
 
 function _spTtsHighlightSentence(idx) {
-  // Remove previous highlight from all containers
-  if(_spTtsHighlightEl){
-    _spTtsHighlightEl.classList.remove('sp-tts-reading');
-    _spTtsHighlightEl=null;
+  // আগের highlight সরাও
+  if (_spTtsHighlightEl) {
+    if (_spTtsHighlightEl.tagName === 'MARK') {
+      const parent = _spTtsHighlightEl.parentNode;
+      if (parent) {
+        while (_spTtsHighlightEl.firstChild) parent.insertBefore(_spTtsHighlightEl.firstChild, _spTtsHighlightEl);
+        parent.removeChild(_spTtsHighlightEl);
+        parent.normalize();
+      }
+    } else {
+      _spTtsHighlightEl.classList.remove('sp-tts-reading');
+      _spTtsHighlightEl.style.background = '';
+    }
+    _spTtsHighlightEl = null;
   }
-  if(idx<0)return;
-  const sentence=_spTtsSentences[idx];
-  if(!sentence||sentence.length<3)return;
-  const searchStr=sentence.substring(0,Math.min(25,sentence.length));
-  // Search in scroll view AND both book pages
-  const containers=[
-    document.getElementById('sp-render-markdown'),
-    document.getElementById('sp-book-left-content'),
+  if (idx < 0) return;
+  const sentence = _spTtsSentences[idx];
+  if (!sentence || sentence.length < 2) return;
+
+  // আগের sentences-এর মোট character count বের করো
+  // এটা দিয়ে full text-এ কোথায় আছি সেটা জানবো
+  const prevText = _spTtsSentences.slice(0, idx).join('');
+  const prevLen  = prevText.length;
+
+  const containers = [
+    document.getElementById(spBookModeActive ? 'sp-book-left-content' : 'sp-render-markdown'),
     document.getElementById('sp-book-right-content'),
   ].filter(Boolean);
-  for(const container of containers){
-    if(!container||!container.innerHTML.trim())continue;
-    const walker=document.createTreeWalker(container,NodeFilter.SHOW_TEXT,null);
+
+  for (const container of containers) {
+    if (!container) continue;
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
     let node;
-    while((node=walker.nextNode())){
-      if(node.nodeValue.includes(searchStr)){
-        const span=node.parentElement;
-        if(span){
-          span.classList.add('sp-tts-reading');
-          _spTtsHighlightEl=span;
-          span.scrollIntoView({behavior:'smooth',block:'nearest'});
+    let charCount = 0; // container-এ এখন পর্যন্ত কত character পার হয়েছি
+
+    while ((node = walker.nextNode())) {
+      const val = node.nodeValue || '';
+      const nodeEnd = charCount + val.length;
+
+      // এই node-এ sentence শুরু হওয়ার কথা কিনা check করো
+      // prevLen এর কাছাকাছি বা পরে এই node আছে কিনা
+      if (nodeEnd > prevLen) {
+        // এই node-এ sentence-এর কিছু অংশ আছে
+        const searchStr = sentence.substring(0, Math.min(20, sentence.length));
+        const localOffset = Math.max(0, prevLen - charCount);
+        const foundAt = val.indexOf(searchStr, localOffset);
+
+        if (foundAt !== -1) {
+          try {
+            const range = document.createRange();
+            range.setStart(node, foundAt);
+            range.setEnd(node, Math.min(foundAt + sentence.length, val.length));
+            const mark = document.createElement('mark');
+            mark.className = 'sp-tts-reading';
+            mark.style.cssText = `background:${_spTtsHlColor};border-radius:2px;color:inherit;`;
+            range.surroundContents(mark);
+            _spTtsHighlightEl = mark;
+            mark.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          } catch(e) {
+            const el = node.parentElement;
+            if (el) {
+              el.classList.add('sp-tts-reading');
+              el.style.background = _spTtsHlColor;
+              _spTtsHighlightEl = el;
+              el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }
+          return;
         }
-        return;
       }
+      charCount += val.length;
     }
   }
 }
@@ -4714,6 +4757,19 @@ document.addEventListener('mousedown', e => {
 });
 
 let _spTtsCurrentRate = 0.92;
+let _spTtsHlColor = 'rgba(251,191,36,.4)'; // default হলুদ
+
+function spTtsSetHlColor(color) {
+  _spTtsHlColor = color;
+  // CSS variable আপডেট করো
+  document.documentElement.style.setProperty('--tts-hl', color);
+  // active mark থাকলে তার color আপডেট করো
+  if (_spTtsHighlightEl && _spTtsHighlightEl.tagName === 'MARK') {
+    _spTtsHighlightEl.style.background = color;
+  }
+  // selected dot highlight করো
+  document.querySelectorAll('[id^="sp-tts-hl-"]').forEach(d => d.style.borderColor = 'transparent');
+}
 
 function spTtsChangeRate(val){
   _spTtsCurrentRate = parseFloat(val);
@@ -6173,6 +6229,16 @@ function showToast(msg, duration = 2500) {
           </label>
           <input type="range" id="sp-tts-slider" min="0.5" max="2" step="0.05" value="0.92"
             oninput="spTtsSliderChange(this.value)">
+        </div>
+        <div class="sp-tts-rate-slider-wrap" style="border-top:1px solid var(--border);margin-top:0;padding-top:8px">
+          <label style="margin-bottom:6px"><span>হাইলাইট রং</span></label>
+          <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+            <div onclick="spTtsSetHlColor('rgba(251,191,36,.4)')" title="হলুদ" style="width:22px;height:22px;border-radius:50%;background:#fbbf24;cursor:pointer;border:2px solid transparent" id="sp-tts-hl-y"></div>
+            <div onclick="spTtsSetHlColor('rgba(52,211,153,.4)')" title="সবুজ" style="width:22px;height:22px;border-radius:50%;background:#34d399;cursor:pointer;border:2px solid transparent"></div>
+            <div onclick="spTtsSetHlColor('rgba(96,165,250,.4)')" title="নীল" style="width:22px;height:22px;border-radius:50%;background:#60a5fa;cursor:pointer;border:2px solid transparent"></div>
+            <div onclick="spTtsSetHlColor('rgba(251,113,133,.4)')" title="গোলাপি" style="width:22px;height:22px;border-radius:50%;background:#fb7185;cursor:pointer;border:2px solid transparent"></div>
+            <div onclick="spTtsSetHlColor('rgba(167,139,250,.4)')" title="বেগুনি" style="width:22px;height:22px;border-radius:50%;background:#a78bfa;cursor:pointer;border:2px solid transparent"></div>
+          </div>
         </div>
       </div>
     </div>
